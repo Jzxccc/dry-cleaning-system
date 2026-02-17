@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>搜索订单 - 干洗店管理系统</title>
+    <link href="/static/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { font-family: Arial, sans-serif; background-color: #f5f5f5; }
+        .large-button { font-size: 1.3rem; padding: 0.8rem 1.5rem; margin: 0.3rem; }
+        .container { max-width: 1200px; margin-top: 1rem; }
+        .header { background-color: #fff; padding: 1rem; border-radius: 0.5rem; margin-bottom: 1rem; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .card { box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .status-unwashed { background-color: #ffc107; color: #000; }
+        .status-washed { background-color: #17a2b8; color: #fff; }
+        .status-finished { background-color: #28a745; color: #fff; }
+        .order-item { cursor: pointer; }
+        .order-item:hover { background-color: #f8f9fa; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h2 class="text-center">搜索订单</h2>
+            <a href="/" class="btn btn-secondary">返回首页</a>
+        </div>
+
+        <!-- 搜索框 -->
+        <div class="card mb-3">
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-8">
+                        <input type="text" id="searchInput" class="form-control form-control-lg" placeholder="输入客户姓名或手机号搜索">
+                    </div>
+                    <div class="col-md-4">
+                        <button class="btn btn-primary btn-lg w-100" onclick="searchOrders()">搜索</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 筛选按钮 -->
+        <div class="card mb-3">
+            <div class="card-body">
+                <button class="btn btn-outline-secondary" onclick="loadAllOrders()">全部订单</button>
+                <button class="btn btn-outline-warning" onclick="filterByStatus('UNWASHED')">未洗</button>
+                <button class="btn btn-outline-info" onclick="filterByStatus('WASHED')">已洗</button>
+                <button class="btn btn-outline-success" onclick="filterByStatus('FINISHED')">已取</button>
+            </div>
+        </div>
+
+        <!-- 订单列表 -->
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">订单列表</h5>
+                <div id="orderList"></div>
+            </div>
+        </div>
+
+        <!-- 订单详情模态框 -->
+        <div class="modal fade" id="orderModal" tabindex="-1">
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">订单详情</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div id="orderDetail"></div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
+                        <button type="button" class="btn btn-warning" id="btnMarkWashed" onclick="markAsWashed()" style="display:none;">标记为已洗</button>
+                        <button type="button" class="btn btn-success" id="btnMarkFinished" onclick="markAsFinished()" style="display:none;">标记为已取</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/js/bootstrap.bundle.min.js"></script>
+    <script>
+        let currentOrderId = null;
+        let currentOrderStatus = null;
+
+        function loadAllOrders() {
+            fetch('/api/orders')
+                .then(res => res.json())
+                .then(orders => displayOrders(orders));
+        }
+
+        function searchOrders() {
+            const keyword = document.getElementById('searchInput').value;
+            if (!keyword) {
+                loadAllOrders();
+                return;
+            }
+            fetch(`/api/orders/customer/name/${keyword}`)
+                .then(res => res.json())
+                .then(orders => {
+                    if (orders.length === 0) {
+                        // 尝试按手机号搜索（需要客户 API 支持）
+                        alert('未找到相关订单');
+                    } else {
+                        displayOrders(orders);
+                    }
+                });
+        }
+
+        function filterByStatus(status) {
+            fetch(`/api/orders/status/${status}`)
+                .then(res => res.json())
+                .then(orders => displayOrders(orders));
+        }
+
+        function displayOrders(orders) {
+            const container = document.getElementById('orderList');
+            if (orders.length === 0) {
+                container.innerHTML = '<p class="text-muted text-center">暂无订单</p>';
+                return;
+            }
+
+            let html = '<div class="list-group">';
+            orders.forEach(order => {
+                const statusClass = getStatusClass(order.status);
+                const statusText = getStatusText(order.status);
+                html += `
+                    <div class="list-group-item list-group-item-action order-item" onclick="showOrderDetail(${order.id})">
+                        <div class="d-flex w-100 justify-content-between">
+                            <h5 class="mb-1">订单号：${order.orderNo}</h5>
+                            <span class="badge ${statusClass}">${statusText}</span>
+                        </div>
+                        <p class="mb-1">总价：¥${order.totalPrice} | 支付方式：${getPayTypeText(order.payType)}</p>
+                        <small>创建时间：${formatDate(order.createTime)}</small>
+                    </div>
+                `;
+            });
+            html += '</div>';
+            container.innerHTML = html;
+        }
+
+        function getStatusClass(status) {
+            if (status === 'UNWASHED') return 'status-unwashed';
+            if (status === 'WASHED') return 'status-washed';
+            if (status === 'FINISHED') return 'status-finished';
+            return 'bg-secondary';
+        }
+
+        function getStatusText(status) {
+            if (status === 'UNWASHED') return '未洗';
+            if (status === 'WASHED') return '已洗';
+            if (status === 'FINISHED') return '已取';
+            return status;
+        }
+
+        function getPayTypeText(payType) {
+            if (payType === 'CASH') return '现金';
+            if (payType === 'PREPAID') return '储值';
+            if (payType === 'UNPAID') return '未支付';
+            return payType;
+        }
+
+        function formatDate(dateStr) {
+            if (!dateStr) return '';
+            return new Date(dateStr).toLocaleString('zh-CN');
+        }
+
+        function showOrderDetail(orderId) {
+            currentOrderId = orderId;
+            fetch(`/api/orders/${orderId}`)
+                .then(res => res.json())
+                .then(order => {
+                    currentOrderStatus = order.status;
+                    document.getElementById('orderDetail').innerHTML = `
+                        <p><strong>订单号：</strong>${order.orderNo}</p>
+                        <p><strong>状态：</strong>${getStatusText(order.status)}</p>
+                        <p><strong>总价：</strong>¥${order.totalPrice}</p>
+                        <p><strong>支付方式：</strong>${getPayTypeText(order.payType)}</p>
+                        <p><strong>加急：</strong>${order.urgent === 1 ? '是' : '否'}</p>
+                        <p><strong>创建时间：</strong>${formatDate(order.createTime)}</p>
+                        <hr>
+                        <h6>衣物列表：</h6>
+                        <div id="clothesList"></div>
+                    `;
+                    
+                    // 加载衣物列表
+                    fetch(`/api/clothes/order/${orderId}`)
+                        .then(res => res.json())
+                        .then(clothes => {
+                            let html = '<ul class="list-group">';
+                            clothes.forEach(c => {
+                                html += `
+                                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                                        ${c.type} - ¥${c.price}
+                                        <span class="badge ${getStatusClass(c.status)}">${getStatusText(c.status)}</span>
+                                    </li>
+                                `;
+                            });
+                            html += '</ul>';
+                            document.getElementById('clothesList').innerHTML = html;
+                        });
+
+                    // 显示操作按钮
+                    document.getElementById('btnMarkWashed').style.display = order.status === 'UNWASHED' ? 'inline-block' : 'none';
+                    document.getElementById('btnMarkFinished').style.display = order.status === 'WASHED' ? 'inline-block' : 'none';
+
+                    new bootstrap.Modal(document.getElementById('orderModal')).show();
+                });
+        }
+
+        function markAsWashed() {
+            fetch(`/api/orders/${currentOrderId}/status?newStatus=WASHED`, {method: 'PUT'})
+                .then(() => {
+                    alert('已标记为已洗');
+                    bootstrap.Modal.getInstance(document.getElementById('orderModal')).hide();
+                    loadAllOrders();
+                });
+        }
+
+        function markAsFinished() {
+            fetch(`/api/orders/${currentOrderId}/status?newStatus=FINISHED`, {method: 'PUT'})
+                .then(() => {
+                    alert('已标记为已取');
+                    bootstrap.Modal.getInstance(document.getElementById('orderModal')).hide();
+                    loadAllOrders();
+                });
+        }
+
+        // 页面加载时加载全部订单
+        loadAllOrders();
+    </script>
+</body>
+</html>

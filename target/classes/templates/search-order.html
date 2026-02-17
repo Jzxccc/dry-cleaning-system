@@ -49,10 +49,12 @@
         <!-- 筛选按钮 -->
         <div class="card mb-3">
             <div class="card-body">
-                <button class="btn btn-outline-secondary" onclick="loadAllOrders()">全部订单</button>
+                <button class="btn btn-outline-secondary" onclick="showAllOrders()">全部订单</button>
                 <button class="btn btn-outline-warning" onclick="filterByStatus('UNWASHED')">未洗</button>
                 <button class="btn btn-outline-info" onclick="filterByStatus('WASHED')">已洗</button>
                 <button class="btn btn-outline-success" onclick="filterByStatus('FINISHED')">已取</button>
+                <button class="btn btn-outline-primary ms-3" onclick="resetSearch()">↻ 初始化</button>
+                <span class="text-muted ms-3" id="statusHint"></span>
             </div>
         </div>
 
@@ -89,24 +91,44 @@
     <script>
         let currentOrderId = null;
         let currentOrderStatus = null;
+        let currentOrders = []; // 存储当前搜索到的订单
+        let currentFilterStatus = null; // 当前筛选的状态
+        let currentSearchType = 'all'; // 当前搜索类型：'all' 或 'fuzzy'
+        let customersMap = {}; // 客户信息映射表：id -> customer
+
+        // 加载客户信息映射表
+        function loadCustomersMap() {
+            fetch('/api/customers')
+                .then(res => res.json())
+                .then(customers => {
+                    customersMap = {};
+                    customers.forEach(c => {
+                        customersMap[c.id] = c;
+                    });
+                });
+        }
 
         // 模糊搜索订单
         function fuzzySearchOrders() {
             const orderNo = document.getElementById('searchOrderNo').value.trim();
             const customerName = document.getElementById('searchCustomerName').value.trim();
             const clothesType = document.getElementById('searchClothesType').value.trim();
-            
+
             // 构建查询参数
             const params = new URLSearchParams();
             if (orderNo) params.append('orderNo', orderNo);
             if (customerName) params.append('customerName', customerName);
             if (clothesType) params.append('clothesType', clothesType);
-            
+
             const queryString = params.toString() ? '?' + params.toString() : '';
-            
+
             fetch('/api/orders/search/fuzzy' + queryString)
                 .then(res => res.json())
                 .then(orders => {
+                    currentOrders = orders; // 保存搜索结果
+                    currentFilterStatus = null; // 重置状态筛选
+                    currentSearchType = 'fuzzy'; // 标记为模糊搜索
+                    updateStatusHint();
                     displayOrders(orders);
                     if (orders.length === 0) {
                         alert('未找到匹配的订单');
@@ -118,21 +140,62 @@
                 });
         }
 
+        // 加载全部订单（初始化）
         function loadAllOrders() {
             // 清空搜索框
             document.getElementById('searchOrderNo').value = '';
             document.getElementById('searchCustomerName').value = '';
             document.getElementById('searchClothesType').value = '';
-            
+
             fetch('/api/orders')
                 .then(res => res.json())
-                .then(orders => displayOrders(orders));
+                .then(orders => {
+                    currentOrders = orders;
+                    currentFilterStatus = null; // 重置状态筛选
+                    currentSearchType = 'all'; // 标记为全部订单
+                    updateStatusHint();
+                    displayOrders(orders);
+                });
+        }
+
+        // 显示全部订单（清除状态筛选，保留搜索条件）
+        function showAllOrders() {
+            if (currentOrders.length === 0) {
+                alert('请先搜索订单或点击"初始化"加载数据');
+                return;
+            }
+            currentFilterStatus = null; // 重置状态筛选
+            updateStatusHint();
+            displayOrders(currentOrders);
+        }
+
+        // 重置搜索（初始化）
+        function resetSearch() {
+            loadAllOrders();
         }
 
         function filterByStatus(status) {
-            fetch(`/api/orders/status/${status}`)
-                .then(res => res.json())
-                .then(orders => displayOrders(orders));
+            if (currentOrders.length === 0) {
+                alert('请先搜索订单或点击"初始化"加载数据');
+                return;
+            }
+            // 在当前搜索结果中按状态过滤
+            currentFilterStatus = status;
+            const filteredOrders = currentOrders.filter(order => order.status === status);
+            updateStatusHint();
+            displayOrders(filteredOrders);
+        }
+
+        function updateStatusHint() {
+            const hintSpan = document.getElementById('statusHint');
+            if (currentFilterStatus) {
+                const statusText = currentFilterStatus === 'UNWASHED' ? '未洗' :
+                                   currentFilterStatus === 'WASHED' ? '已洗' : '已取';
+                hintSpan.textContent = `当前筛选：${statusText}（共 ${currentOrders.length} 条，筛选后 ${currentOrders.filter(o => o.status === currentFilterStatus).length} 条）`;
+            } else {
+                const searchTypeText = currentSearchType === 'fuzzy' ? '（搜索结果）' : '';
+                hintSpan.textContent = currentOrders.length > 0 ? `共 ${currentOrders.length} 条订单${searchTypeText}` : '';
+            }
         }
 
         function displayOrders(orders) {
@@ -146,14 +209,22 @@
             orders.forEach(order => {
                 const statusClass = getStatusClass(order.status);
                 const statusText = getStatusText(order.status);
+                const customer = customersMap[order.customerId];
+                const customerName = customer ? customer.name : '未知客户';
+                const customerPhone = customer ? (customer.phone || '') : '';
+                
                 html += `
                     <div class="list-group-item list-group-item-action order-item" onclick="showOrderDetail(${order.id})">
                         <div class="d-flex w-100 justify-content-between">
                             <h5 class="mb-1">订单号：${order.orderNo}</h5>
                             <span class="badge ${statusClass}">${statusText}</span>
                         </div>
+                        <div class="mb-1">
+                            <span class="text-primary"><strong>客户：${customerName}</strong></span>
+                            ${customerPhone ? `<span class="text-muted ms-3">手机：${customerPhone}</span>` : ''}
+                        </div>
                         <p class="mb-1">总价：¥${order.totalPrice} | 支付方式：${getPayTypeText(order.payType)}</p>
-                        <small>创建时间：${formatDate(order.createTime)}</small>
+                        <small class="text-muted">创建时间：${formatDate(order.createTime)}</small>
                     </div>
                 `;
             });
@@ -248,8 +319,11 @@
                 });
         }
 
-        // 页面加载时加载全部订单
-        loadAllOrders();
+        // 页面加载时加载全部订单和客户信息
+        document.addEventListener('DOMContentLoaded', function() {
+            loadCustomersMap(); // 加载客户信息
+            loadAllOrders(); // 加载订单
+        });
     </script>
 </body>
 </html>

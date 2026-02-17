@@ -111,28 +111,39 @@ public class CustomerServiceImpl implements CustomerService {
 
     @Override
     public List<Customer> fuzzySearchWithPinyin(String name, String phone, String note) {
-        List<Customer> results = customerMapper.fuzzySearch(null, phone, note);
+        // 获取所有客户
+        List<Customer> allCustomers = customerMapper.selectList(null);
         
-        // 如果姓名为空，直接返回结果
-        if (name == null || name.trim().isEmpty()) {
-            return results;
-        }
-        
-        String trimmedName = name.trim();
-        
-        // 过滤姓名匹配（包含拼音匹配）
-        return results.stream()
+        // 过滤条件
+        return allCustomers.stream()
             .filter(customer -> {
-                if (customer.getName() == null) {
-                    return false;
+                // 手机号过滤
+                if (phone != null && !phone.trim().isEmpty()) {
+                    if (customer.getPhone() == null || !customer.getPhone().contains(phone.trim())) {
+                        return false;
+                    }
                 }
-                // 姓名包含匹配
-                if (customer.getName().contains(trimmedName)) {
-                    return true;
+                
+                // 备注过滤（Customer 模型没有 note 字段，跳过）
+                
+                // 姓名过滤（支持拼音）
+                if (name != null && !name.trim().isEmpty()) {
+                    if (customer.getName() == null) {
+                        return false;
+                    }
+                    String trimmedName = name.trim();
+                    // 姓名包含匹配
+                    boolean nameMatches = customer.getName().contains(trimmedName);
+                    // 拼音匹配
+                    boolean pinyinMatches = com.drycleaning.system.util.PinyinUtil.matchesPinyin(
+                        customer.getName(), trimmedName);
+                    
+                    if (!nameMatches && !pinyinMatches) {
+                        return false;
+                    }
                 }
-                // 拼音匹配
-                return com.drycleaning.system.util.PinyinUtil.matchesPinyin(
-                    customer.getName(), trimmedName);
+                
+                return true;
             })
             .collect(java.util.stream.Collectors.toList());
     }

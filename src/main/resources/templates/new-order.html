@@ -49,10 +49,16 @@
                 
                 <!-- 客户选择区域（搜索到多个客户时显示） -->
                 <div id="customerSelectionArea" style="display:none;" class="mb-3">
-                    <label class="form-label">请选择客户：</label>
-                    <select class="form-select" id="customerSelect" size="3" onchange="selectCustomerFromList()">
-                    </select>
-                    <div class="form-text">找到 <span id="customerCount">0</span> 个客户，请选择</div>
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <label class="form-label mb-0">请选择客户：</label>
+                        <button class="btn btn-sm btn-outline-secondary" onclick="clearSelection()">重新选择</button>
+                    </div>
+                    <div class="border rounded p-3" style="max-height: 200px; overflow-y: auto;">
+                        <div id="customerCheckboxList">
+                            <!-- 复选框列表将动态生成 -->
+                        </div>
+                    </div>
+                    <div class="form-text">找到 <span id="customerCount">0</span> 个客户，请勾选对应的客户</div>
                 </div>
                 
                 <div id="customerInfo" style="display:none;">
@@ -132,6 +138,20 @@
         let currentCustomerId = null;
         let clothesItems = [];
         let searchResults = []; // 存储搜索结果用于选择
+        let currentSearchCount = 0; // 当前搜索结果数量
+
+        // 清空选择
+        function clearSelection() {
+            currentCustomerId = null;
+            document.getElementById('customerInfo').style.display = 'none';
+            document.getElementById('customerSelectionArea').style.display = 'block';
+            document.getElementById('customerCheckboxList').innerHTML = '';
+            document.getElementById('customerCount').textContent = currentSearchCount;
+            
+            // 清空搜索框
+            document.getElementById('customerPhone').value = '';
+            document.getElementById('customerNameSearch').value = '';
+        }
 
         // 按手机号搜索（支持模糊查询）
         function searchByPhone() {
@@ -144,15 +164,11 @@
             fetch(`/api/customers/search/fuzzy?phone=${encodeURIComponent(phone)}`)
                 .then(res => res.json())
                 .then(customers => {
+                    console.log('手机号搜索到客户数量:', customers.length, customers);
                     if (customers && customers.length > 0) {
                         searchResults = customers;
-                        if (customers.length === 1) {
-                            // 只有一个结果，直接选中
-                            selectCustomer(customers[0]);
-                        } else {
-                            // 多个结果，显示选择列表
-                            showCustomerSelection(customers);
-                        }
+                        // 显示选择列表让用户勾选
+                        showCustomerSelection(customers);
                     } else {
                         showNewCustomerForm();
                     }
@@ -174,15 +190,11 @@
             fetch(`/api/customers/search/fuzzy?name=${encodeURIComponent(keyword)}`)
                 .then(res => res.json())
                 .then(customers => {
+                    console.log('搜索到客户数量:', customers.length, customers);
                     if (customers && customers.length > 0) {
                         searchResults = customers;
-                        if (customers.length === 1) {
-                            // 只有一个结果，直接选中
-                            selectCustomer(customers[0]);
-                        } else {
-                            // 多个结果，显示选择列表
-                            showCustomerSelection(customers);
-                        }
+                        // 无论多少个结果，都显示选择列表让用户勾选
+                        showCustomerSelection(customers);
                     } else {
                         showNewCustomerForm();
                     }
@@ -193,50 +205,49 @@
                 });
         }
 
-        // 显示客户选择列表
+        // 显示客户选择列表（复选框形式）
         function showCustomerSelection(customers) {
-            const select = document.getElementById('customerSelect');
+            const checkboxList = document.getElementById('customerCheckboxList');
             const selectionArea = document.getElementById('customerSelectionArea');
             const countSpan = document.getElementById('customerCount');
             
-            // 清空选项
-            select.innerHTML = '';
+            // 保存搜索结果数量
+            currentSearchCount = customers.length;
             
-            // 添加选项
+            // 清空列表
+            checkboxList.innerHTML = '';
+            
+            // 添加复选框
             customers.forEach((c, index) => {
+                const div = document.createElement('div');
+                div.className = 'form-check mb-2';
+                
+                const checkbox = document.createElement('input');
+                checkbox.className = 'form-check-input';
+                checkbox.type = 'radio';
+                checkbox.name = 'customerSelect';
+                checkbox.id = 'customer_' + c.id;
+                checkbox.value = c.id;
+                checkbox.onclick = function() { selectCustomer(c); };
+                
+                const label = document.createElement('label');
+                label.className = 'form-check-label';
+                label.htmlFor = 'customer_' + c.id;
+                
                 const pinyin = getPinyinInitials(c.name);
-                const option = document.createElement('option');
-                option.value = c.id;
-                option.textContent = `${c.name} (手机：${c.phone || '-'}, 余额：¥${c.balance || 0})`;
-                option.setAttribute('data-name', c.name);
-                option.setAttribute('data-wechat', c.wechat || '');
-                option.setAttribute('data-balance', c.balance || 0);
-                option.setAttribute('data-phone', c.phone || '');
-                select.appendChild(option);
+                label.textContent = `${c.name} (手机：${c.phone || '-'}, 拼音：${pinyin}, 余额：¥${c.balance || 0})`;
+                
+                div.appendChild(checkbox);
+                div.appendChild(label);
+                checkboxList.appendChild(div);
             });
             
             countSpan.textContent = customers.length;
             selectionArea.style.display = 'block';
             
-            // 默认选中第一个
-            select.selectedIndex = 0;
-            selectCustomerFromList();
-        }
-
-        // 从列表选择客户
-        function selectCustomerFromList() {
-            const select = document.getElementById('customerSelect');
-            if (select && select.options.length > 0) {
-                const option = select.options[select.selectedIndex];
-                const customer = {
-                    id: parseInt(option.value),
-                    name: option.getAttribute('data-name'),
-                    phone: option.getAttribute('data-phone'),
-                    wechat: option.getAttribute('data-wechat'),
-                    balance: parseFloat(option.getAttribute('data-balance'))
-                };
-                selectCustomer(customer);
-            }
+            // 隐藏客户信息区域，等待用户选择
+            document.getElementById('customerInfo').style.display = 'none';
+            document.getElementById('newCustomerForm').style.display = 'none';
         }
 
         // 选中客户
@@ -247,7 +258,8 @@
             document.getElementById('customerWechat').value = customer.wechat || '';
             document.getElementById('customerBalance').value = customer.balance || 0;
             document.getElementById('newCustomerForm').style.display = 'none';
-            document.getElementById('customerSelectionArea').style.display = 'none';
+            // 更新提示信息
+            document.getElementById('customerCount').textContent = currentSearchCount + '（已选择：' + customer.name + '）';
         }
 
         // 显示新客户表单
@@ -256,20 +268,6 @@
             document.getElementById('customerInfo').style.display = 'none';
             document.getElementById('customerSelectionArea').style.display = 'none';
             document.getElementById('newCustomerForm').style.display = 'block';
-        }
-
-        // 获取拼音首字母（前端显示用）
-        function getPinyinInitials(chinese) {
-            const pinyinMap = {
-                '张': 'z', '三': 's', '李': 'l', '四': 's', '王': 'w', '五': 'w',
-                '赵': 'z', '钱': 'q', '孙': 's', '李': 'l', '周': 'z', '吴': 'w',
-                '郑': 'z', '王': 'w', '冯': 'f', '陈': 'c', '褚': 'c', '卫': 'w'
-            };
-            let initials = '';
-            for (let char of chinese) {
-                initials += pinyinMap[char] || char;
-            }
-            return initials;
         }
 
         function createNewCustomer() {
@@ -499,6 +497,20 @@
                 console.error('Error creating order:', err);
                 alert('订单创建失败：' + err.message);
             });
+        }
+
+        // 获取拼音首字母（前端显示用）
+        function getPinyinInitials(chinese) {
+            const pinyinMap = {
+                '张': 'z', '三': 's', '李': 'l', '四': 's', '王': 'w', '五': 'w',
+                '赵': 'z', '钱': 'q', '孙': 's', '李': 'l', '周': 'z', '吴': 'w',
+                '郑': 'z', '王': 'w', '冯': 'f', '陈': 'c', '褚': 'c', '卫': 'w'
+            };
+            let initials = '';
+            for (let char of chinese) {
+                initials += pinyinMap[char] || char;
+            }
+            return initials;
         }
     </script>
 </body>

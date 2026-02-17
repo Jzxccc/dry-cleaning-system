@@ -11,7 +11,7 @@ import java.util.List;
 @Mapper
 public interface OrderMapper extends BaseMapper<Order> {
 
-    @Select("SELECT * FROM orders WHERE customer_id = #{customerId}")
+    @Select("SELECT * FROM orders WHERE customer_id = #{customer_id}")
     List<Order> findByCustomerId(@Param("customer_id") Long customerId);
 
     @Select("SELECT * FROM orders WHERE customer_name LIKE CONCAT('%', #{customerName}, '%')")

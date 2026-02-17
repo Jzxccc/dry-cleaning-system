@@ -28,14 +28,13 @@ CREATE TABLE IF NOT EXISTS orders (
 -- 衣物表
 CREATE TABLE IF NOT EXISTS clothes (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    order_id INTEGER NOT NULL,
+    order_id TEXT NOT NULL,
     type TEXT NOT NULL,
     price REAL NOT NULL,
     damage_remark TEXT,
     damage_image TEXT,
     status TEXT NOT NULL,
-    create_time TEXT NOT NULL,
-    FOREIGN KEY (order_id) REFERENCES orders(id)
+    create_time TEXT NOT NULL
 );
 
 -- 充值记录表

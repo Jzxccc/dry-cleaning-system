@@ -48,7 +48,7 @@ public class ClothesController {
     }
 
     @GetMapping("/order/{orderId}")
-    public ResponseEntity<List<Clothes>> getClothesByOrderId(@PathVariable Long orderId) {
+    public ResponseEntity<List<Clothes>> getClothesByOrderId(@PathVariable String orderId) {
         List<Clothes> clothes = clothesService.getClothesByOrderId(orderId);
         return ResponseEntity.ok(clothes);
     }

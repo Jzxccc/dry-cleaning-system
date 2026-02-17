@@ -11,8 +11,8 @@ import java.util.List;
 @Mapper
 public interface ClothesMapper extends BaseMapper<Clothes> {
 
-    @Select("SELECT * FROM clothes WHERE order_id = #{orderId}")
-    List<Clothes> findByOrderId(@Param("order_id") Long orderId);
+    @Select("SELECT * FROM clothes WHERE order_id = #{order_id}")
+    List<Clothes> findByOrderId(@Param("order_id") String orderId);
 
     @Select("SELECT * FROM clothes WHERE status = #{status}")
     List<Clothes> findByStatus(@Param("status") String status);

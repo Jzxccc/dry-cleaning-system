@@ -26,7 +26,7 @@ public class ClothesServiceImpl implements ClothesService {
     }
 
     @Override
-    public List<Clothes> getClothesByOrderId(Long orderId) {
+    public List<Clothes> getClothesByOrderId(String orderId) {
         return clothesMapper.findByOrderId(orderId);
     }
 

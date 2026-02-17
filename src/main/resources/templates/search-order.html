@@ -90,20 +90,43 @@
         }
 
         function searchOrders() {
-            const keyword = document.getElementById('searchInput').value;
+            const keyword = document.getElementById('searchInput').value.trim();
             if (!keyword) {
                 loadAllOrders();
                 return;
             }
-            fetch(`/api/orders/customer/name/${keyword}`)
-                .then(res => res.json())
-                .then(orders => {
-                    if (orders.length === 0) {
-                        // 尝试按手机号搜索（需要客户 API 支持）
-                        alert('未找到相关订单');
-                    } else {
-                        displayOrders(orders);
+            
+            // 先尝试按手机号搜索客户
+            fetch(`/api/customers/search/phone/${keyword}`)
+                .then(res => {
+                    if (res.ok) {
+                        return res.json();
                     }
+                    // 手机号没找到，尝试按姓名搜索
+                    return fetch(`/api/customers/search/name/${keyword}`)
+                        .then(res2 => res2.ok ? res2.json() : null);
+                })
+                .then(customer => {
+                    if (customer && customer.id) {
+                        // 找到客户，查询该客户的订单
+                        return fetch(`/api/orders/customer/${customer.id}`)
+                            .then(res => res.json());
+                    } else {
+                        // 没找到客户，返回空数组
+                        return [];
+                    }
+                })
+                .then(orders => {
+                    if (orders && orders.length > 0) {
+                        displayOrders(orders);
+                    } else {
+                        alert('未找到该客户的订单');
+                        document.getElementById('orderList').innerHTML = '<p class="text-muted text-center">暂无订单</p>';
+                    }
+                })
+                .catch(err => {
+                    console.error('Search error:', err);
+                    alert('搜索失败：' + err.message);
                 });
         }
 
@@ -184,7 +207,7 @@
                     `;
                     
                     // 加载衣物列表
-                    fetch(`/api/clothes/order/${orderId}`)
+                    fetch(`/api/clothes/order/${order.orderNo}`)
                         .then(res => res.json())
                         .then(clothes => {
                             let html = '<ul class="list-group">';

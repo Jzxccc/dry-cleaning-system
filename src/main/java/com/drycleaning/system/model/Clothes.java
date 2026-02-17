@@ -9,7 +9,7 @@ public class Clothes {
     private Long id;
 
     @TableField("order_id")
-    private Long orderId;
+    private String orderId;
 
     @TableField("type")
     private String type;
@@ -33,7 +33,7 @@ public class Clothes {
     public Clothes() {
     }
 
-    public Clothes(Long orderId, String type, Double price, String damageRemark, String damageImage, String status) {
+    public Clothes(String orderId, String type, Double price, String damageRemark, String damageImage, String status) {
         this.orderId = orderId;
         this.type = type;
         this.price = price;
@@ -52,11 +52,11 @@ public class Clothes {
         this.id = id;
     }
 
-    public Long getOrderId() {
+    public String getOrderId() {
         return orderId;
     }
 
-    public void setOrderId(Long orderId) {
+    public void setOrderId(String orderId) {
         this.orderId = orderId;
     }
 

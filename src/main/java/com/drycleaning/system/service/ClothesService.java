@@ -8,7 +8,7 @@ import java.util.Optional;
 public interface ClothesService {
     List<Clothes> getAllClothes();
     Optional<Clothes> getClothesById(Long id);
-    List<Clothes> getClothesByOrderId(Long orderId);
+    List<Clothes> getClothesByOrderId(String orderId);
     List<Clothes> getClothesByStatus(String status);
     Clothes createClothes(Clothes clothes);
     Clothes updateClothes(Long id, Clothes clothesDetails);

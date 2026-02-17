@@ -22,7 +22,7 @@
     <div class="container">
         <div class="header">
             <h2 class="text-center">搜索订单</h2>
-            <a href="/" class="btn btn-secondary">返回首页</a>
+            <a href="/dashboard" class="btn btn-secondary">返回仪表板</a>
         </div>
 
         <!-- 搜索框 -->
@@ -34,12 +34,17 @@
                         <input type="text" id="searchOrderNo" class="form-control form-control-lg" placeholder="订单号">
                     </div>
                     <div class="col-md-3">
-                        <input type="text" id="searchCustomerName" class="form-control form-control-lg" placeholder="客户姓名">
+                        <input type="text" id="searchCustomerName" class="form-control form-control-lg" placeholder="客户姓名/拼音">
+                    </div>
+                    <div class="col-md-3">
+                        <input type="text" id="searchPhone" class="form-control form-control-lg" placeholder="手机号">
                     </div>
                     <div class="col-md-3">
                         <input type="text" id="searchClothesType" class="form-control form-control-lg" placeholder="衣物类型">
                     </div>
-                    <div class="col-md-3">
+                </div>
+                <div class="row mt-3">
+                    <div class="col-md-12">
                         <button class="btn btn-primary btn-lg w-100" onclick="fuzzySearchOrders()">搜索</button>
                     </div>
                 </div>
@@ -112,6 +117,7 @@
         function fuzzySearchOrders() {
             const orderNo = document.getElementById('searchOrderNo').value.trim();
             const customerName = document.getElementById('searchCustomerName').value.trim();
+            const phone = document.getElementById('searchPhone').value.trim();
             const clothesType = document.getElementById('searchClothesType').value.trim();
 
             // 构建查询参数
@@ -125,12 +131,21 @@
             fetch('/api/orders/search/fuzzy' + queryString)
                 .then(res => res.json())
                 .then(orders => {
-                    currentOrders = orders; // 保存搜索结果
+                    // 在搜索结果中按手机号过滤
+                    let filteredOrders = orders;
+                    if (phone) {
+                        filteredOrders = orders.filter(order => {
+                            const customer = customersMap[order.customerId];
+                            return customer && customer.phone && customer.phone.includes(phone);
+                        });
+                    }
+                    
+                    currentOrders = filteredOrders; // 保存搜索结果
                     currentFilterStatus = null; // 重置状态筛选
                     currentSearchType = 'fuzzy'; // 标记为模糊搜索
                     updateStatusHint();
-                    displayOrders(orders);
-                    if (orders.length === 0) {
+                    displayOrders(filteredOrders);
+                    if (filteredOrders.length === 0) {
                         alert('未找到匹配的订单');
                     }
                 })
@@ -145,6 +160,7 @@
             // 清空搜索框
             document.getElementById('searchOrderNo').value = '';
             document.getElementById('searchCustomerName').value = '';
+            document.getElementById('searchPhone').value = '';
             document.getElementById('searchClothesType').value = '';
 
             fetch('/api/orders')

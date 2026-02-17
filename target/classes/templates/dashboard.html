@@ -7,22 +7,26 @@
     <link href="/static/css/bootstrap.min.css" rel="stylesheet">
     <style>
         body { font-family: Arial, sans-serif; background-color: #f5f5f5; }
-        .large-button { font-size: 1.5rem; padding: 1rem 2rem; margin: 0.5rem; }
-        .container { max-width: 1200px; margin-top: 2rem; }
-        .header { background-color: #fff; padding: 1rem; border-radius: 0.5rem; margin-bottom: 2rem; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .large-button { font-size: 1.3rem; padding: 0.8rem 1.5rem; margin: 0.5rem; }
+        .container { max-width: 1200px; margin-top: 1rem; }
+        .header { background-color: #fff; padding: 1rem; border-radius: 0.5rem; margin-bottom: 1rem; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
         .stat-card { background: #fff; border-radius: 0.5rem; padding: 1.5rem; margin-bottom: 1rem; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
         .stat-value { font-size: 2rem; font-weight: bold; }
+        .recharge-history { max-height: 300px; overflow-y: auto; }
     </style>
 </head>
 <body>
     <div class="container">
-        <div class="header">
-            <h1 class="text-center">干洗店管理系统</h1>
-            <p class="text-center text-muted">高效管理客户、订单和衣物信息</p>
+        <div class="header d-flex justify-content-between align-items-center">
+            <div>
+                <h1>干洗店管理系统</h1>
+                <p class="text-muted mb-0">高效管理客户、订单和衣物信息</p>
+            </div>
+            <a href="/" class="btn btn-outline-secondary">返回首页</a>
         </div>
 
         <!-- 快速统计 -->
-        <div class="row mb-4">
+        <div class="row mb-3">
             <div class="col-md-3">
                 <div class="stat-card text-center">
                     <div class="stat-value text-primary" id="todayIncome">¥0</div>
@@ -50,12 +54,11 @@
         </div>
 
         <!-- 主要功能 -->
-        <div class="row">
+        <div class="row mb-3">
             <div class="col-md-6">
-                <div class="card mb-4">
+                <div class="card">
                     <div class="card-body text-center">
                         <h5 class="card-title">订单管理</h5>
-                        <p class="card-text">创建新订单或搜索现有订单</p>
                         <a href="/orders/new" class="btn btn-success large-button">新建订单</a>
                         <a href="/orders/search" class="btn btn-info large-button">搜索订单</a>
                     </div>
@@ -63,64 +66,98 @@
             </div>
 
             <div class="col-md-6">
-                <div class="card mb-4">
+                <div class="card">
                     <div class="card-body text-center">
                         <h5 class="card-title">客户管理</h5>
-                        <p class="card-text">添加、编辑和查看客户信息</p>
                         <a href="/customers" class="btn btn-primary large-button">客户管理</a>
                     </div>
                 </div>
             </div>
         </div>
 
-        <div class="row">
+        <div class="row mb-3">
             <div class="col-md-6">
-                <div class="card mb-4">
+                <div class="card">
                     <div class="card-body text-center">
-                        <h5 class="card-title">统计报表</h5>
-                        <p class="card-text">查看收入统计和订单状态</p>
-                        <a href="/statistics" class="btn btn-warning large-button">统计报表</a>
+                        <h5 class="card-title">会员充值</h5>
+                        <p class="text-muted">充 100 送 20%，快速便捷</p>
+                        <button class="btn btn-warning large-button" onclick="showRechargeModal()">会员充值</button>
                     </div>
                 </div>
             </div>
 
             <div class="col-md-6">
-                <div class="card mb-4">
+                <div class="card">
                     <div class="card-body text-center">
-                        <h5 class="card-title">会员充值</h5>
-                        <p class="card-text">为客户进行储值充值（充 100 送 20%）</p>
-                        <button class="btn btn-secondary large-button" onclick="showRechargeModal()">会员充值</button>
+                        <h5 class="card-title">统计报表</h5>
+                        <p class="text-muted">查看详细收入和订单统计</p>
+                        <a href="/statistics" class="btn btn-secondary large-button">统计报表</a>
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- 充值模态框 -->
-        <div class="modal fade" id="rechargeModal" tabindex="-1">
-            <div class="modal-dialog">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h5 class="modal-title">会员充值</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        <!-- 充值记录 -->
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">最近充值记录</h5>
+                <div class="recharge-history" id="rechargeHistory">
+                    <p class="text-muted text-center">暂无数据</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 充值模态框 -->
+    <div class="modal fade" id="rechargeModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">会员充值</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">客户手机号/姓名</label>
+                        <input type="text" id="searchCustomerInput" class="form-control" placeholder="输入手机号或姓名搜索客户">
                     </div>
-                    <div class="modal-body">
-                        <div class="mb-3">
-                            <label class="form-label">客户 ID</label>
-                            <input type="number" id="rechargeCustomerId" class="form-control" placeholder="输入客户 ID">
+                    <button class="btn btn-outline-primary w-100 mb-3" onclick="searchCustomer()">搜索客户</button>
+                    
+                    <div id="customerSelection" style="display:none;">
+                        <div class="alert alert-success">
+                            <strong>选中客户：</strong><span id="selectedCustomerName"></span>
+                            <span class="text-muted">(余额：¥<span id="selectedCustomerBalance">0</span>)</span>
                         </div>
+                        <input type="hidden" id="selectedCustomerId">
+                        
                         <div class="mb-3">
                             <label class="form-label">充值金额</label>
                             <input type="number" id="rechargeAmount" class="form-control" placeholder="输入充值金额">
                         </div>
                         <div class="alert alert-info">
-                            充值优惠：充 100 送 20%<br>
-                            例如：充值 100 元，实际到账 120 元
+                            <strong>充值优惠：</strong>充 100 送 20%<br>
+                            充值 <span id="displayAmount">0</span> 元，实际到账 <span id="displayTotal">0</span> 元
                         </div>
                     </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
-                        <button type="button" class="btn btn-primary" onclick="doRecharge()">确认充值</button>
-                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="button" class="btn btn-primary" onclick="doRecharge()" id="confirmRechargeBtn" disabled>确认充值</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 客户选择模态框 -->
+    <div class="modal fade" id="customerSelectModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">选择客户</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div id="customerList"></div>
                 </div>
             </div>
         </div>
@@ -128,9 +165,12 @@
 
     <script src="/static/js/bootstrap.bundle.min.js"></script>
     <script>
+        let selectedCustomer = null;
+
+        // 加载仪表板统计
         function loadDashboardStats() {
             const today = new Date().toISOString().split('T')[0];
-            
+
             // 今日收入
             fetch(`/api/statistics/daily-income?date=${today}`)
                 .then(res => res.json())
@@ -145,8 +185,15 @@
                     document.getElementById('unfinishedOrders').textContent = count;
                 });
 
-            // 今日订单数（简化处理，使用未完成订单数代替）
-            document.getElementById('todayOrders').textContent = '-';
+            // 今日订单数
+            fetch(`/api/statistics/daily?date=${today}`)
+                .then(res => res.json())
+                .then(stats => {
+                    document.getElementById('todayOrders').textContent = stats.orderCount || 0;
+                })
+                .catch(() => {
+                    document.getElementById('todayOrders').textContent = '-';
+                });
 
             // 总客户数
             fetch('/api/customers')
@@ -156,16 +203,113 @@
                 });
         }
 
+        // 搜索客户
+        function searchCustomer() {
+            const keyword = document.getElementById('searchCustomerInput').value.trim();
+            if (!keyword) {
+                alert('请输入手机号或姓名');
+                return;
+            }
+
+            // 先尝试按手机号搜索
+            fetch(`/api/customers/search/phone/${keyword}`)
+                .then(res => res.ok ? res.json() : null)
+                .then(customer => {
+                    if (customer && customer.id) {
+                        selectCustomer(customer);
+                    } else {
+                        // 尝试按姓名搜索
+                        return fetch(`/api/customers/search/name/${keyword}`)
+                            .then(res => res.ok ? res.json() : null);
+                    }
+                })
+                .then(customer => {
+                    if (customer && customer.id) {
+                        selectCustomer(customer);
+                    } else {
+                        // 尝试模糊搜索
+                        fetch(`/api/customers/search/fuzzy?name=${encodeURIComponent(keyword)}`)
+                            .then(res => res.json())
+                            .then(customers => {
+                                if (customers && customers.length > 0) {
+                                    showCustomerSelection(customers);
+                                } else {
+                                    alert('未找到该客户');
+                                }
+                            });
+                    }
+                })
+                .catch(err => {
+                    console.error('Search error:', err);
+                    alert('搜索失败：' + err.message);
+                });
+        }
+
+        // 显示客户选择列表
+        function showCustomerSelection(customers) {
+            const listDiv = document.getElementById('customerList');
+            let html = '<div class="list-group">';
+            customers.forEach(c => {
+                html += `
+                    <button class="list-group-item list-group-item-action" onclick='selectCustomer(${JSON.stringify(c)})'>
+                        <strong>${c.name}</strong> - 手机：${c.phone || '-'} - 余额：¥${c.balance || 0}
+                    </button>
+                `;
+            });
+            html += '</div>';
+            listDiv.innerHTML = html;
+            new bootstrap.Modal(document.getElementById('customerSelectModal')).show();
+        }
+
+        // 选中客户
+        function selectCustomer(customer) {
+            selectedCustomer = customer;
+            document.getElementById('selectedCustomerId').value = customer.id;
+            document.getElementById('selectedCustomerName').textContent = customer.name;
+            document.getElementById('selectedCustomerBalance').textContent = customer.balance || 0;
+            document.getElementById('customerSelection').style.display = 'block';
+            document.getElementById('confirmRechargeBtn').disabled = false;
+            
+            // 关闭选择模态框
+            const selectModal = bootstrap.Modal.getInstance(document.getElementById('customerSelectModal'));
+            if (selectModal) {
+                selectModal.hide();
+            }
+            
+            // 更新充值计算
+            updateRechargeCalculation();
+        }
+
+        // 更新充值计算
+        function updateRechargeCalculation() {
+            const amount = parseFloat(document.getElementById('rechargeAmount').value) || 0;
+            const gift = amount * 0.2;
+            const total = amount + gift;
+            
+            document.getElementById('displayAmount').textContent = amount.toFixed(2);
+            document.getElementById('displayTotal').textContent = total.toFixed(2);
+        }
+
+        // 显示充值模态框
         function showRechargeModal() {
+            // 重置状态
+            selectedCustomer = null;
+            document.getElementById('searchCustomerInput').value = '';
+            document.getElementById('customerSelection').style.display = 'none';
+            document.getElementById('confirmRechargeBtn').disabled = true;
+            document.getElementById('rechargeAmount').value = '';
+            updateRechargeCalculation();
+            
             new bootstrap.Modal(document.getElementById('rechargeModal')).show();
         }
 
+        // 执行充值
         function doRecharge() {
-            const customerId = document.getElementById('rechargeCustomerId').value;
-            const amount = document.getElementById('rechargeAmount').value;
-            
-            if (!customerId || !amount) {
-                alert('请填写客户 ID 和充值金额');
+            const customerId = document.getElementById('selectedCustomerId').value;
+            const amount = parseFloat(document.getElementById('rechargeAmount').value);
+
+            if (!customerId || !amount || amount <= 0) {
+                alert('请选择客户并输入有效的充值金额');
                 return;
             }
 
@@ -177,15 +321,70 @@
                     throw new Error('充值失败');
                 })
                 .then(msg => {
-                    alert(msg);
+                    alert('充值成功！' + msg);
                     bootstrap.Modal.getInstance(document.getElementById('rechargeModal')).hide();
+                    loadRechargeHistory(); // 刷新充值记录
                 })
                 .catch(err => {
                     alert('充值失败：' + err.message);
                 });
         }
 
-        loadDashboardStats();
+        // 加载最近充值记录
+        function loadRechargeHistory() {
+            fetch('/api/customers')
+                .then(res => res.json())
+                .then(customers => {
+                    const historyDiv = document.getElementById('rechargeHistory');
+                    if (customers.length === 0) {
+                        historyDiv.innerHTML = '<p class="text-muted text-center">暂无数据</p>';
+                        return;
+                    }
+                    
+                    // 获取前 5 个客户的充值记录
+                    let allRecords = [];
+                    const promises = customers.slice(0, 5).map(c => {
+                        return fetch(`/api/prepaid/recharge-records/${c.id}`)
+                            .then(res => res.json())
+                            .then(records => {
+                                records.forEach(r => {
+                                    r.customerName = c.name;
+                                    allRecords.push(r);
+                                });
+                            });
+                    });
+                    
+                    Promise.all(promises).then(() => {
+                        // 按时间排序，取最近 10 条
+                        allRecords.sort((a, b) => new Date(b.createTime) - new Date(a.createTime));
+                        const recentRecords = allRecords.slice(0, 10);
+                        
+                        if (recentRecords.length === 0) {
+                            historyDiv.innerHTML = '<p class="text-muted text-center">暂无充值记录</p>';
+                            return;
+                        }
+                        
+                        let html = '<table class="table table-sm"><thead><tr><th>客户</th><th>充值金额</th><th>赠送</th><th>时间</th></tr></thead><tbody>';
+                        recentRecords.forEach(r => {
+                            html += `<tr>
+                                <td>${r.customerName}</td>
+                                <td>¥${r.rechargeAmount}</td>
+                                <td class="text-success">+¥${r.giftAmount}</td>
+                                <td>${new Date(r.createTime).toLocaleString('zh-CN')}</td>
+                            </tr>`;
+                        });
+                        html += '</tbody></table>';
+                        historyDiv.innerHTML = html;
+                    });
+                });
+        }
+
+        // 绑定充值金额输入事件
+        document.addEventListener('DOMContentLoaded', function() {
+            document.getElementById('rechargeAmount').addEventListener('input', updateRechargeCalculation);
+            loadDashboardStats();
+            loadRechargeHistory();
+        });
     </script>
 </body>
 </html>

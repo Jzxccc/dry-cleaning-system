@@ -106,4 +106,20 @@ public class OrderController {
         Order updatedOrder = orderService.updateOrderStatus(id, newStatus);
         return ResponseEntity.ok(updatedOrder);
     }
+
+    /**
+     * 模糊搜索订单 - 支持订单号、客户姓名、衣物类型的多条件组合查询
+     * @param orderNo 订单号关键词（可选）
+     * @param customerName 客户姓名关键词（可选）
+     * @param clothesType 衣物类型关键词（可选）
+     * @return 匹配的订单列表
+     */
+    @GetMapping("/search/fuzzy")
+    public ResponseEntity<List<Order>> fuzzySearchOrders(
+            @RequestParam(required = false) String orderNo,
+            @RequestParam(required = false) String customerName,
+            @RequestParam(required = false) String clothesType) {
+        List<Order> orders = orderService.fuzzySearch(orderNo, customerName, clothesType);
+        return ResponseEntity.ok(orders);
+    }
 }

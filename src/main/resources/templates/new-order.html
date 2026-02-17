@@ -29,13 +29,32 @@
                 <div class="row mb-3">
                     <div class="col-md-6">
                         <label class="form-label">手机号</label>
-                        <input type="text" id="customerPhone" class="form-control" placeholder="输入手机号搜索客户">
+                        <input type="text" id="customerPhone" class="form-control" placeholder="输入手机号搜索">
                     </div>
                     <div class="col-md-6">
                         <label class="form-label">&nbsp;</label>
-                        <button class="btn btn-primary w-100" onclick="searchCustomer()">搜索客户</button>
+                        <button class="btn btn-primary w-100" onclick="searchByPhone()">手机号搜索</button>
                     </div>
                 </div>
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <label class="form-label">姓名/拼音</label>
+                        <input type="text" id="customerNameSearch" class="form-control" placeholder="输入姓名或拼音（如：zs）">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">&nbsp;</label>
+                        <button class="btn btn-success w-100" onclick="searchByNameOrPinyin()">姓名/拼音搜索</button>
+                    </div>
+                </div>
+                
+                <!-- 客户选择区域（搜索到多个客户时显示） -->
+                <div id="customerSelectionArea" style="display:none;" class="mb-3">
+                    <label class="form-label">请选择客户：</label>
+                    <select class="form-select" id="customerSelect" size="3" onchange="selectCustomerFromList()">
+                    </select>
+                    <div class="form-text">找到 <span id="customerCount">0</span> 个客户，请选择</div>
+                </div>
+                
                 <div id="customerInfo" style="display:none;">
                     <div class="row">
                         <div class="col-md-4">
@@ -112,29 +131,145 @@
     <script>
         let currentCustomerId = null;
         let clothesItems = [];
+        let searchResults = []; // 存储搜索结果用于选择
 
-        function searchCustomer() {
+        // 按手机号搜索（支持模糊查询）
+        function searchByPhone() {
             const phone = document.getElementById('customerPhone').value;
-            fetch(`/api/customers/search/phone/${phone}`)
+            if (!phone) {
+                alert('请输入手机号');
+                return;
+            }
+            // 使用模糊搜索接口，支持手机号模糊匹配
+            fetch(`/api/customers/search/fuzzy?phone=${encodeURIComponent(phone)}`)
                 .then(res => res.json())
-                .then(data => {
-                    if (data.id) {
-                        currentCustomerId = data.id;
-                        document.getElementById('customerInfo').style.display = 'block';
-                        document.getElementById('customerName').value = data.name;
-                        document.getElementById('customerWechat').value = data.wechat || '';
-                        document.getElementById('customerBalance').value = data.balance || 0;
-                        document.getElementById('newCustomerForm').style.display = 'none';
+                .then(customers => {
+                    if (customers && customers.length > 0) {
+                        searchResults = customers;
+                        if (customers.length === 1) {
+                            // 只有一个结果，直接选中
+                            selectCustomer(customers[0]);
+                        } else {
+                            // 多个结果，显示选择列表
+                            showCustomerSelection(customers);
+                        }
                     } else {
-                        currentCustomerId = null;
-                        document.getElementById('customerInfo').style.display = 'none';
-                        document.getElementById('newCustomerForm').style.display = 'block';
+                        showNewCustomerForm();
                     }
                 })
-                .catch(() => {
-                    document.getElementById('customerInfo').style.display = 'none';
-                    document.getElementById('newCustomerForm').style.display = 'block';
+                .catch(err => {
+                    console.error('Search error:', err);
+                    alert('搜索失败：' + err.message);
                 });
+        }
+
+        // 按姓名或拼音搜索（使用模糊搜索接口，支持多结果）
+        function searchByNameOrPinyin() {
+            const keyword = document.getElementById('customerNameSearch').value.trim();
+            if (!keyword) {
+                alert('请输入姓名或拼音');
+                return;
+            }
+            // 使用模糊搜索接口，支持拼音
+            fetch(`/api/customers/search/fuzzy?name=${encodeURIComponent(keyword)}`)
+                .then(res => res.json())
+                .then(customers => {
+                    if (customers && customers.length > 0) {
+                        searchResults = customers;
+                        if (customers.length === 1) {
+                            // 只有一个结果，直接选中
+                            selectCustomer(customers[0]);
+                        } else {
+                            // 多个结果，显示选择列表
+                            showCustomerSelection(customers);
+                        }
+                    } else {
+                        showNewCustomerForm();
+                    }
+                })
+                .catch(err => {
+                    console.error('Search error:', err);
+                    alert('搜索失败：' + err.message);
+                });
+        }
+
+        // 显示客户选择列表
+        function showCustomerSelection(customers) {
+            const select = document.getElementById('customerSelect');
+            const selectionArea = document.getElementById('customerSelectionArea');
+            const countSpan = document.getElementById('customerCount');
+            
+            // 清空选项
+            select.innerHTML = '';
+            
+            // 添加选项
+            customers.forEach((c, index) => {
+                const pinyin = getPinyinInitials(c.name);
+                const option = document.createElement('option');
+                option.value = c.id;
+                option.textContent = `${c.name} (手机：${c.phone || '-'}, 余额：¥${c.balance || 0})`;
+                option.setAttribute('data-name', c.name);
+                option.setAttribute('data-wechat', c.wechat || '');
+                option.setAttribute('data-balance', c.balance || 0);
+                option.setAttribute('data-phone', c.phone || '');
+                select.appendChild(option);
+            });
+            
+            countSpan.textContent = customers.length;
+            selectionArea.style.display = 'block';
+            
+            // 默认选中第一个
+            select.selectedIndex = 0;
+            selectCustomerFromList();
+        }
+
+        // 从列表选择客户
+        function selectCustomerFromList() {
+            const select = document.getElementById('customerSelect');
+            if (select && select.options.length > 0) {
+                const option = select.options[select.selectedIndex];
+                const customer = {
+                    id: parseInt(option.value),
+                    name: option.getAttribute('data-name'),
+                    phone: option.getAttribute('data-phone'),
+                    wechat: option.getAttribute('data-wechat'),
+                    balance: parseFloat(option.getAttribute('data-balance'))
+                };
+                selectCustomer(customer);
+            }
+        }
+
+        // 选中客户
+        function selectCustomer(customer) {
+            currentCustomerId = customer.id;
+            document.getElementById('customerInfo').style.display = 'block';
+            document.getElementById('customerName').value = customer.name;
+            document.getElementById('customerWechat').value = customer.wechat || '';
+            document.getElementById('customerBalance').value = customer.balance || 0;
+            document.getElementById('newCustomerForm').style.display = 'none';
+            document.getElementById('customerSelectionArea').style.display = 'none';
+        }
+
+        // 显示新客户表单
+        function showNewCustomerForm() {
+            currentCustomerId = null;
+            document.getElementById('customerInfo').style.display = 'none';
+            document.getElementById('customerSelectionArea').style.display = 'none';
+            document.getElementById('newCustomerForm').style.display = 'block';
+        }
+
+        // 获取拼音首字母（前端显示用）
+        function getPinyinInitials(chinese) {
+            const pinyinMap = {
+                '张': 'z', '三': 's', '李': 'l', '四': 's', '王': 'w', '五': 'w',
+                '赵': 'z', '钱': 'q', '孙': 's', '李': 'l', '周': 'z', '吴': 'w',
+                '郑': 'z', '王': 'w', '冯': 'f', '陈': 'c', '褚': 'c', '卫': 'w'
+            };
+            let initials = '';
+            for (let char of chinese) {
+                initials += pinyinMap[char] || char;
+            }
+            return initials;
         }
 
         function createNewCustomer() {

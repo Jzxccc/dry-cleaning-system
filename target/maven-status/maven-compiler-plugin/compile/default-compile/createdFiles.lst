@@ -23,6 +23,7 @@ com\drycleaning\system\service\RechargeRecordService.class
 com\drycleaning\system\service\impl\RechargeRecordServiceImpl.class
 com\drycleaning\system\controller\CustomerController.class
 com\drycleaning\system\model\RechargeRecord.class
+com\drycleaning\system\util\PinyinUtil.class
 com\drycleaning\system\service\impl\ClothesServiceImpl.class
 com\drycleaning\system\mapper\ClothesMapper.class
 com\drycleaning\system\service\impl\OrderServiceImpl.class

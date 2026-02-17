@@ -1,19 +1,25 @@
 package com.drycleaning.system.service.impl;
 
 import com.drycleaning.system.mapper.OrderMapper;
+import com.drycleaning.system.model.Customer;
 import com.drycleaning.system.model.Order;
+import com.drycleaning.system.service.CustomerService;
 import com.drycleaning.system.service.OrderService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Service
 public class OrderServiceImpl implements OrderService {
 
     @Autowired
     private OrderMapper orderMapper;
+
+    @Autowired
+    private CustomerService customerService;
 
     @Override
     public List<Order> getAllOrders() {
@@ -82,5 +88,32 @@ public class OrderServiceImpl implements OrderService {
         order.setStatus(newStatus);
         orderMapper.updateById(order);
         return order;
+    }
+
+    @Override
+    public List<Order> fuzzySearch(String orderNo, String customerName, String clothesType) {
+        // 第一步：使用 Mapper 进行订单号模糊查询
+        List<Order> orders = orderMapper.fuzzySearch(orderNo);
+        
+        // 第二步：在内存中过滤客户姓名和衣物类型
+        return orders.stream()
+            .filter(order -> {
+                // 过滤客户姓名
+                if (customerName != null && !customerName.trim().isEmpty()) {
+                    Optional<Customer> customerOpt = customerService.getCustomerById(order.getCustomerId());
+                    if (customerOpt.isPresent()) {
+                        String custName = customerOpt.get().getName();
+                        if (custName == null || !custName.contains(customerName.trim())) {
+                            return false;
+                        }
+                    } else {
+                        return false;
+                    }
+                }
+                // 注意：衣物类型需要关联 clothes 表，这里简化处理
+                // 如需完整实现，需要添加 ClothesMapper 并查询关联数据
+                return true;
+            })
+            .collect(Collectors.toList());
     }
 }

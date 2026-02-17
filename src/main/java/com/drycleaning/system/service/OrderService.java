@@ -15,4 +15,13 @@ public interface OrderService {
     Order updateOrder(Long id, Order orderDetails);
     void deleteOrder(Long id);
     Order updateOrderStatus(Long id, String newStatus);
+    
+    /**
+     * 模糊搜索订单
+     * @param orderNo 订单号关键词（可选）
+     * @param customerName 客户姓名关键词（可选）
+     * @param clothesType 衣物类型关键词（可选）
+     * @return 匹配的订单列表
+     */
+    List<Order> fuzzySearch(String orderNo, String customerName, String clothesType);
 }

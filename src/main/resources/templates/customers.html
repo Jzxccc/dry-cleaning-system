@@ -19,6 +19,26 @@
             <a href="/" class="btn btn-secondary">返回首页</a>
         </div>
 
+        <!-- 搜索框 -->
+        <div class="card mb-3">
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-3">
+                        <input type="text" id="searchName" class="form-control form-control-lg" placeholder="姓名/拼音">
+                    </div>
+                    <div class="col-md-3">
+                        <input type="text" id="searchPhone" class="form-control form-control-lg" placeholder="手机号">
+                    </div>
+                    <div class="col-md-3">
+                        <input type="text" id="searchNote" class="form-control form-control-lg" placeholder="备注">
+                    </div>
+                    <div class="col-md-3">
+                        <button class="btn btn-primary btn-lg w-100" onclick="fuzzySearch()">搜索</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- 添加客户按钮 -->
         <div class="card mb-3">
             <div class="card-body">
@@ -120,33 +140,77 @@
 
     <script src="/static/js/bootstrap.bundle.min.js"></script>
     <script>
+        // 模糊搜索客户
+        function fuzzySearch() {
+            const name = document.getElementById('searchName').value.trim();
+            const phone = document.getElementById('searchPhone').value.trim();
+            const note = document.getElementById('searchNote').value.trim();
+            
+            // 构建查询参数
+            const params = new URLSearchParams();
+            if (name) params.append('name', name);
+            if (phone) params.append('phone', phone);
+            if (note) params.append('note', note);
+            
+            const queryString = params.toString() ? '?' + params.toString() : '';
+            
+            fetch('/api/customers/search/fuzzy' + queryString)
+                .then(res => res.json())
+                .then(customers => {
+                    displayCustomers(customers);
+                    if (customers.length === 0) {
+                        alert('未找到匹配的客户');
+                    }
+                })
+                .catch(err => {
+                    console.error('Search error:', err);
+                    alert('搜索失败：' + err.message);
+                });
+        }
+        
+        // 支持回车键搜索
+        document.addEventListener('DOMContentLoaded', function() {
+            const searchInputs = document.querySelectorAll('#searchName, #searchPhone, #searchNote');
+            searchInputs.forEach(input => {
+                input.addEventListener('keypress', function(e) {
+                    if (e.key === 'Enter') {
+                        fuzzySearch();
+                    }
+                });
+            });
+        });
+        
         function loadCustomers() {
             fetch('/api/customers')
                 .then(res => res.json())
                 .then(customers => {
-                    const tbody = document.getElementById('customerList');
-                    if (customers.length === 0) {
-                        tbody.innerHTML = '<tr><td colspan="6" class="text-center">暂无客户</td></tr>';
-                        return;
-                    }
-                    let html = '';
-                    customers.forEach(c => {
-                        html += `
-                            <tr>
-                                <td>${c.id}</td>
-                                <td>${c.name}</td>
-                                <td>${c.phone || '-'}</td>
-                                <td>${c.wechat || '-'}</td>
-                                <td>¥${c.balance || 0}</td>
-                                <td>
-                                    <button class="btn btn-sm btn-primary" onclick="editCustomer(${c.id})">编辑</button>
-                                    <button class="btn btn-sm btn-danger" onclick="deleteCustomer(${c.id})">删除</button>
-                                </td>
-                            </tr>
-                        `;
-                    });
-                    tbody.innerHTML = html;
+                    displayCustomers(customers);
                 });
+        }
+        
+        function displayCustomers(customers) {
+            const tbody = document.getElementById('customerList');
+            if (customers.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" class="text-center">暂无客户</td></tr>';
+                return;
+            }
+            let html = '';
+            customers.forEach(c => {
+                html += `
+                    <tr>
+                        <td>${c.id}</td>
+                        <td>${c.name}</td>
+                        <td>${c.phone || '-'}</td>
+                        <td>${c.wechat || '-'}</td>
+                        <td>¥${c.balance || 0}</td>
+                        <td>
+                            <button class="btn btn-sm btn-primary" onclick="editCustomer(${c.id})">编辑</button>
+                            <button class="btn btn-sm btn-danger" onclick="deleteCustomer(${c.id})">删除</button>
+                        </td>
+                    </tr>
+                `;
+            });
+            tbody.innerHTML = html;
         }
 
         function addCustomer() {

@@ -71,4 +71,33 @@ public class CustomerController {
         Customer updatedCustomer = customerService.updateCustomerBalance(id, newBalance);
         return ResponseEntity.ok(updatedCustomer);
     }
+
+    /**
+     * 模糊搜索客户 - 支持姓名、手机号、备注的多条件组合查询（姓名支持拼音）
+     * @param name 姓名关键词（可选，支持拼音）
+     * @param phone 手机号关键词（可选）
+     * @param note 备注关键词（可选）
+     * @return 匹配的客户列表
+     */
+    @GetMapping("/search/fuzzy")
+    public ResponseEntity<List<Customer>> fuzzySearchCustomers(
+            @RequestParam(required = false) String name,
+            @RequestParam(required = false) String phone,
+            @RequestParam(required = false) String note) {
+        List<Customer> customers = customerService.fuzzySearchWithPinyin(name, phone, note);
+        return ResponseEntity.ok(customers);
+    }
+
+    /**
+     * 按姓名或拼音搜索客户（支持拼音首字母和全拼）
+     * 例如：张三 可以匹配 "张"、"zs"、"zhangsan"
+     * @param keyword 姓名、拼音首字母或全拼
+     * @return 匹配的客户列表
+     */
+    @GetMapping("/search/name-or-pinyin")
+    public ResponseEntity<List<Customer>> searchByNameOrPinyin(
+            @RequestParam String keyword) {
+        List<Customer> customers = customerService.searchByNameOrPinyin(keyword);
+        return ResponseEntity.ok(customers);
+    }
 }

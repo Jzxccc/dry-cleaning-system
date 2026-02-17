@@ -77,4 +77,63 @@ public class CustomerServiceImpl implements CustomerService {
         customerMapper.updateById(customer);
         return customer;
     }
+
+    @Override
+    public List<Customer> fuzzySearch(String name, String phone, String note) {
+        return customerMapper.fuzzySearch(name, phone, note);
+    }
+
+    @Override
+    public List<Customer> searchByNameOrPinyin(String keyword) {
+        if (keyword == null || keyword.trim().isEmpty()) {
+            return getAllCustomers();
+        }
+        
+        String trimmedKeyword = keyword.trim();
+        List<Customer> allCustomers = getAllCustomers();
+        
+        // 过滤匹配的客户
+        return allCustomers.stream()
+            .filter(customer -> {
+                if (customer.getName() == null) {
+                    return false;
+                }
+                // 姓名包含匹配
+                if (customer.getName().contains(trimmedKeyword)) {
+                    return true;
+                }
+                // 拼音匹配
+                return com.drycleaning.system.util.PinyinUtil.matchesPinyin(
+                    customer.getName(), trimmedKeyword);
+            })
+            .collect(java.util.stream.Collectors.toList());
+    }
+
+    @Override
+    public List<Customer> fuzzySearchWithPinyin(String name, String phone, String note) {
+        List<Customer> results = customerMapper.fuzzySearch(null, phone, note);
+        
+        // 如果姓名为空，直接返回结果
+        if (name == null || name.trim().isEmpty()) {
+            return results;
+        }
+        
+        String trimmedName = name.trim();
+        
+        // 过滤姓名匹配（包含拼音匹配）
+        return results.stream()
+            .filter(customer -> {
+                if (customer.getName() == null) {
+                    return false;
+                }
+                // 姓名包含匹配
+                if (customer.getName().contains(trimmedName)) {
+                    return true;
+                }
+                // 拼音匹配
+                return com.drycleaning.system.util.PinyinUtil.matchesPinyin(
+                    customer.getName(), trimmedName);
+            })
+            .collect(java.util.stream.Collectors.toList());
+    }
 }

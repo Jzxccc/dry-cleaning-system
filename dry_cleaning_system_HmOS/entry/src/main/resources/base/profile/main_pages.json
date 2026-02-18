@@ -1,0 +1,13 @@
+{
+  "src": [
+    "pages/Index",
+    "pages/Dashboard",
+    "pages/CustomerList",
+    "pages/CustomerEdit",
+    "pages/OrderList",
+    "pages/NewOrder",
+    "pages/Recharge",
+    "pages/Statistics",
+    "pages/OrderDetail"
+  ]
+}

@@ -132,7 +132,7 @@
                         
                         <div class="mb-3">
                             <label class="form-label">充值金额</label>
-                            <input type="number" id="rechargeAmount" class="form-control" placeholder="输入充值金额">
+                            <input type="number" id="rechargeAmount" class="form-control" placeholder="输入充值金额" step="100" min="100">
                         </div>
                         <div class="alert alert-info">
                             <strong>充值优惠：</strong>充 100 送 20%<br>
@@ -204,45 +204,46 @@
         }
 
         // 搜索客户
-        function searchCustomer() {
+        async function searchCustomer() {
             const keyword = document.getElementById('searchCustomerInput').value.trim();
             if (!keyword) {
                 alert('请输入手机号或姓名');
                 return;
             }
 
-            // 先尝试按手机号搜索
-            fetch(`/api/customers/search/phone/${keyword}`)
-                .then(res => res.ok ? res.json() : null)
-                .then(customer => {
+            try {
+                // 先尝试按手机号搜索
+                const phoneRes = await fetch(`/api/customers/search/phone/${keyword}`);
+                if (phoneRes.ok) {
+                    const customer = await phoneRes.json();
                     if (customer && customer.id) {
                         selectCustomer(customer);
-                    } else {
-                        // 尝试按姓名搜索
-                        return fetch(`/api/customers/search/name/${keyword}`)
-                            .then(res => res.ok ? res.json() : null);
+                        return;
                     }
-                })
-                .then(customer => {
+                }
+
+                // 尝试按姓名搜索
+                const nameRes = await fetch(`/api/customers/search/name/${keyword}`);
+                if (nameRes.ok) {
+                    const customer = await nameRes.json();
                     if (customer && customer.id) {
                         selectCustomer(customer);
-                    } else {
-                        // 尝试模糊搜索
-                        fetch(`/api/customers/search/fuzzy?name=${encodeURIComponent(keyword)}`)
-                            .then(res => res.json())
-                            .then(customers => {
-                                if (customers && customers.length > 0) {
-                                    showCustomerSelection(customers);
-                                } else {
-                                    alert('未找到该客户');
-                                }
-                            });
+                        return;
                     }
-                })
-                .catch(err => {
-                    console.error('Search error:', err);
-                    alert('搜索失败：' + err.message);
-                });
+                }
+
+                // 尝试模糊搜索
+                const fuzzyRes = await fetch(`/api/customers/search/fuzzy?name=${encodeURIComponent(keyword)}`);
+                const customers = await fuzzyRes.json();
+                if (customers && customers.length > 0) {
+                    showCustomerSelection(customers);
+                } else {
+                    alert('未找到该客户');
+                }
+            } catch (err) {
+                console.error('Search error:', err);
+                alert('搜索失败：' + err.message);
+            }
         }
 
         // 显示客户选择列表
@@ -285,9 +286,9 @@
             const amount = parseFloat(document.getElementById('rechargeAmount').value) || 0;
             const gift = amount * 0.2;
             const total = amount + gift;
-            
-            document.getElementById('displayAmount').textContent = amount.toFixed(2);
-            document.getElementById('displayTotal').textContent = total.toFixed(2);
+
+            document.getElementById('displayAmount').textContent = amount.toFixed(0);
+            document.getElementById('displayTotal').textContent = total.toFixed(0);
         }
 
         // 显示充值模态框

@@ -195,6 +195,55 @@
                 .then(income => {
                     document.getElementById('monthlyIncome').textContent = '¥' + income.toFixed(2);
                 });
+            
+            // 加载本月订单明细
+            loadMonthlyOrderDetails(year, month);
+        }
+
+        function loadMonthlyOrderDetails(year, month) {
+            fetch('/api/orders')
+                .then(res => res.json())
+                .then(orders => {
+                    const tbody = document.getElementById('orderTableBody');
+                    // 过滤本月订单
+                    const filteredOrders = orders.filter(order => {
+                        if (!order.createTime) return false;
+                        const orderDate = new Date(order.createTime);
+                        return orderDate.getFullYear() == year && 
+                               (orderDate.getMonth() + 1) == month;
+                    });
+                    
+                    if (filteredOrders.length === 0) {
+                        tbody.innerHTML = '<tr><td colspan="6" class="text-center">暂无订单</td></tr>';
+                        return;
+                    }
+                    
+                    // 获取客户信息
+                    fetch('/api/customers')
+                        .then(res => res.json())
+                        .then(customers => {
+                            const customerMap = {};
+                            customers.forEach(c => {
+                                customerMap[c.id] = c.name;
+                            });
+                            
+                            let html = '';
+                            filteredOrders.forEach(order => {
+                                const customerName = customerMap[order.customerId] || '未知客户';
+                                html += `
+                                    <tr>
+                                        <td>${order.orderNo}</td>
+                                        <td>${customerName}</td>
+                                        <td>¥${order.totalPrice}</td>
+                                        <td>${getPayTypeText(order.payType)}</td>
+                                        <td>${getStatusText(order.status)}</td>
+                                        <td>${formatDate(order.createTime)}</td>
+                                    </tr>
+                                `;
+                            });
+                            tbody.innerHTML = html;
+                        });
+                });
         }
 
         function loadUnfinishedCount() {

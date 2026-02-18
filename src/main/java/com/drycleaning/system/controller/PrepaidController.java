@@ -30,11 +30,11 @@ public class PrepaidController {
         }
 
         Customer customer = customerOpt.get();
-        
+
         // 计算赠送金额
         Double giftAmount = amount * 0.2;
         Double totalAdded = amount + giftAmount;
-        
+
         // 更新客户余额
         Double newBalance = customer.getBalance() + totalAdded;
         customerService.updateCustomerBalance(customerId, newBalance);
@@ -44,7 +44,7 @@ public class PrepaidController {
         record.setCustomerId(customerId);
         record.setRechargeAmount(amount);
         record.setGiftAmount(giftAmount);
-        
+
         rechargeRecordService.createRechargeRecord(record);
 
         return ResponseEntity.ok("Recharge successful. Amount: " + amount + ", Gift: " + giftAmount + ", New Balance: " + newBalance);

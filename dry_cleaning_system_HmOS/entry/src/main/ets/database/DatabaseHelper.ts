@@ -3,6 +3,8 @@ import { Customer } from '../models/Customer';
 import { Order } from '../models/Order';
 import { Context } from '@ohos.abilityAccessCtrl';
 
+const LOG_TAG = 'DRY CLEAN SYSTEM LOG:';
+
 /**
  * 数据库配置
  */
@@ -188,7 +190,7 @@ export class DatabaseHelper {
         predicates.equalTo(CustomerColumns.ID, customer.id.toString());
         
         await this.rdbStore.update(valueBucket, predicates);
-        console.info(`Customer updated: ${customer.id}`);
+        console.info(LOG_TAG, `Customer updated: ${customer.id}`);
         return customer.id;
       } else {
         // 插入
@@ -201,12 +203,30 @@ export class DatabaseHelper {
         };
         
         const id = await this.rdbStore.insert(Tables.CUSTOMER, valueBucket);
-        console.info(`Customer inserted: ${id}`);
+        console.info(LOG_TAG, `Customer inserted: ${id}`);
         return id;
       }
     } catch (error) {
-      console.error('Failed to save customer:', error);
+      console.error(LOG_TAG, 'Failed to save customer:', error);
       return -1;
+    }
+  }
+
+  /**
+   * 删除客户
+   */
+  async deleteCustomer(id: number): Promise<void> {
+    if (!this.rdbStore) return;
+
+    try {
+      const predicates = new relationalStore.RdbPredicates(Tables.CUSTOMER);
+      predicates.equalTo(CustomerColumns.ID, id.toString());
+      
+      await this.rdbStore.delete(predicates);
+      console.info(LOG_TAG, `Customer deleted: ${id}`);
+    } catch (error) {
+      console.error(LOG_TAG, 'Failed to delete customer:', error);
+      throw error;
     }
   }
 

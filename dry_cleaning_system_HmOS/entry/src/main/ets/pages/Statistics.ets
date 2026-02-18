@@ -7,6 +7,17 @@ import { DateUtil } from '../utils/DateUtil';
 import { Order } from '../models/Order';
 import { Customer } from '../models/Customer';
 
+const LOG_TAG = 'DRY CLEAN SYSTEM LOG:';
+
+/**
+ * DatePicker 结果类型
+ */
+interface DatePickerResult {
+  year: number;
+  month: number;
+  day: number;
+}
+
 /**
  * 统计报表页面
  */
@@ -16,21 +27,24 @@ struct Statistics {
   @State selectedDate: string = DateUtil.getToday();
   @State selectedYear: number = new Date().getFullYear();
   @State selectedMonth: number = new Date().getMonth() + 1;
-  @State activeTab: string = 'daily'; // 'daily' or 'monthly'
-  
+  @State activeTab: string = 'daily';
+
   // 日报数据
   @State dailyIncome: number = 0;
   @State cashIncome: number = 0;
   @State prepaidIncome: number = 0;
   @State unfinishedCount: number = 0;
   @State dailyOrders: Order[] = [];
-  
+
   // 月报数据
   @State monthlyIncome: number = 0;
   @State monthlyOrders: Order[] = [];
-  
+
   @State customers: Map<number, Customer> = new Map();
   @State isLoading: boolean = false;
+
+  // DatePicker 状态
+  @State showDatePicker: boolean = false;
 
   aboutToAppear() {
     this.loadDailyStats();
@@ -43,26 +57,29 @@ struct Statistics {
         this.customers.set(c.id, c);
       });
     } catch (error) {
-      console.error('Failed to load customers:', error);
+      console.error(LOG_TAG, 'Failed to load customers:', error);
     }
   }
 
   async loadDailyStats() {
     try {
+      console.info(LOG_TAG, `Loading daily stats for: ${this.selectedDate}`);
       this.isLoading = true;
-      
+
       // 加载收入统计
       this.dailyIncome = await statisticsService.getDailyIncome(this.selectedDate);
       this.cashIncome = await statisticsService.getCashIncome(this.selectedDate);
       this.prepaidIncome = await statisticsService.getPrepaidIncome(this.selectedDate);
       this.unfinishedCount = await statisticsService.getUnfinishedOrderCount();
-      
+
+      console.info(LOG_TAG, `Daily income: ${this.dailyIncome}, Cash: ${this.cashIncome}, Prepaid: ${this.prepaidIncome}`);
+
       // 加载订单明细
       await this.loadDailyOrders();
-      
+
       this.isLoading = false;
     } catch (error) {
-      console.error('Failed to load daily stats:', error);
+      console.error(LOG_TAG, 'Failed to load daily stats:', error);
       this.isLoading = false;
     }
   }
@@ -74,25 +91,29 @@ struct Statistics {
         const orderDate = order.createTime ? order.createTime.split('T')[0] : '';
         return orderDate === this.selectedDate;
       });
+      console.info(LOG_TAG, `Loaded ${this.dailyOrders.length} orders for ${this.selectedDate}`);
       await this.loadCustomers();
     } catch (error) {
-      console.error('Failed to load daily orders:', error);
+      console.error(LOG_TAG, 'Failed to load daily orders:', error);
     }
   }
 
   async loadMonthlyStats() {
     try {
+      console.info(LOG_TAG, `Loading monthly stats for: ${this.selectedYear}-${this.selectedMonth}`);
       this.isLoading = true;
-      
+
       // 加载月度收入
       this.monthlyIncome = await statisticsService.getMonthlyIncome(this.selectedYear, this.selectedMonth);
-      
+
+      console.info(LOG_TAG, `Monthly income: ${this.monthlyIncome}`);
+
       // 加载月度订单
       await this.loadMonthlyOrders();
-      
+
       this.isLoading = false;
     } catch (error) {
-      console.error('Failed to load monthly stats:', error);
+      console.error(LOG_TAG, 'Failed to load monthly stats:', error);
       this.isLoading = false;
     }
   }
@@ -103,12 +124,13 @@ struct Statistics {
       this.monthlyOrders = allOrders.filter(order => {
         if (!order.createTime) return false;
         const orderDate = new Date(order.createTime);
-        return orderDate.getFullYear() === this.selectedYear && 
-               (orderDate.getMonth() + 1) === this.selectedMonth;
+        return orderDate.getFullYear() === this.selectedYear &&
+          (orderDate.getMonth() + 1) === this.selectedMonth;
       });
+      console.info(LOG_TAG, `Loaded ${this.monthlyOrders.length} orders for ${this.selectedYear}-${this.selectedMonth}`);
       await this.loadCustomers();
     } catch (error) {
-      console.error('Failed to load monthly orders:', error);
+      console.error(LOG_TAG, 'Failed to load monthly orders:', error);
     }
   }
 
@@ -142,6 +164,47 @@ struct Statistics {
       'UNPAID': '未支付'
     };
     return payTypeMap[payType] || payType;
+  }
+
+  onDateSelected(date: string) {
+    this.selectedDate = date;
+    console.info(LOG_TAG, `Date selected: ${date}`);
+    this.loadDailyStats();
+  }
+
+  onYearMonthSelected(year: number, month: number) {
+    this.selectedYear = year;
+    this.selectedMonth = month;
+    console.info(LOG_TAG, `YearMonth selected: ${year}-${month}`);
+    this.loadMonthlyStats();
+    this.showDatePicker = false;  // 关闭弹窗
+  }
+
+  onDateChange(result: DatePickerResult) {
+    const year = result.year;
+    const month = String(result.month).padStart(2, '0');
+    const day = String(result.day).padStart(2, '0');
+    const dateStr = `${year}-${month}-${day}`;
+    this.selectedDate = dateStr;  // 先更新状态
+    this.onDateSelected(dateStr);  // 再加载数据
+    this.showDatePicker = false;  // 关闭弹窗
+  }
+
+  @Builder
+  DatePickerDialog() {
+    Column() {
+      DatePicker({
+        start: new Date(2024, 0, 1),
+        end: new Date(),
+        selected: this.selectedDate ? new Date(this.selectedDate) : new Date(),
+      })
+        .onChange((result: DatePickerResult) => {
+          this.onDateChange(result);
+        })
+    }
+    .width('90%')
+    .backgroundColor('#ffffff')
+    .borderRadius(12)
   }
 
   build() {
@@ -211,7 +274,6 @@ struct Statistics {
         .layoutWeight(1)
         .justifyContent(FlexAlign.Center)
       } else {
-        // 内容区域
         Scroll() {
           Column() {
             if (this.activeTab === 'daily') {
@@ -227,6 +289,28 @@ struct Statistics {
         .layoutWeight(1)
         .scrollBar(BarState.Off)
       }
+
+      // DatePicker 弹窗
+      if (this.showDatePicker) {
+        Column() {
+          // 遮罩层
+          Column() {
+            this.DatePickerDialog()
+          }
+          .width('100%')
+          .height('100%')
+          .backgroundColor('rgba(0, 0, 0, 0.5)')
+          .justifyContent(FlexAlign.Center)
+          .alignItems(HorizontalAlign.Center)
+          .onClick(() => {
+            this.showDatePicker = false;
+          })
+        }
+        .width('100%')
+        .height('100%')
+        .position({ x: 0, y: 0 })
+        .zIndex(1000)
+      }
     }
     .width('100%')
     .height('100%')
@@ -236,30 +320,36 @@ struct Statistics {
   @Builder
   DailyContent() {
     Column() {
-      // 日期选择器
-      Row() {
-        Text('选择日期：')
-          .fontSize(16)
-          .fontColor('#333333')
+      // 日期选择器（滚轮）
+      Column() {
+        Text('选择日期')
+          .fontSize(14)
+          .fontColor('#666666')
+          .margin({ bottom: 8 })
 
-        TextInput({ text: this.selectedDate })
-          .layoutWeight(1)
-          .height(40)
-          .backgroundColor('#ffffff')
-          .borderRadius(8)
-          .padding({ left: 16, right: 16 })
+        Row() {
+          Text(this.selectedDate)
+            .fontSize(18)
+            .fontWeight(FontWeight.Bold)
+            .fontColor('#333333')
+            .layoutWeight(1)
 
-        Button('查询')
-          .width(80)
-          .height(40)
-          .margin({ left: 8 })
-          .onClick(() => {
-            this.loadDailyStats();
-          })
+          Button('选择日期')
+            .width(120)
+            .height(40)
+            .onClick(() => {
+              this.showDatePicker = true;
+            })
+        }
+        .width('100%')
+        .padding(16)
+        .backgroundColor('#ffffff')
+        .borderRadius(8)
       }
       .width('100%')
       .padding(16)
       .backgroundColor('#ffffff')
+      .margin({ bottom: 1 })
 
       // 统计卡片
       Grid() {
@@ -280,12 +370,12 @@ struct Statistics {
       .width('100%')
       .padding(16)
       .backgroundColor('#ffffff')
-      .margin({ top: 1 })
+      .margin({ bottom: 1 })
 
       // 订单明细
       Column() {
         Row() {
-          Text('订单明细')
+          Text(`订单明细 (${this.dailyOrders.length}笔)`)
             .fontSize(16)
             .fontWeight(FontWeight.Medium)
         }
@@ -315,7 +405,7 @@ struct Statistics {
                     Text(this.getStatusText(order.status))
                       .fontSize(12)
                       .fontColor('#ffffff')
-                      .padding({ left: 8, right: 8, top: 2, bottom: 2 })
+                      .padding({ left: 8, right: 8, top: 4, bottom: 4 })
                       .borderRadius(4)
                       .backgroundColor(this.getStatusColor(order.status))
                   }
@@ -360,7 +450,7 @@ struct Statistics {
       }
       .width('100%')
       .backgroundColor('#ffffff')
-      .margin({ top: 1 })
+      .margin({ bottom: 16 })
     }
     .width('100%')
   }
@@ -368,44 +458,36 @@ struct Statistics {
   @Builder
   MonthlyContent() {
     Column() {
-      // 月份选择器
-      Row() {
-        Text('年份：')
-          .fontSize(16)
-          .fontColor('#333333')
+      // 年月选择器（滚轮）
+      Column() {
+        Text('选择月份')
+          .fontSize(14)
+          .fontColor('#666666')
+          .margin({ bottom: 8 })
 
-        TextInput({ text: this.selectedYear.toString() })
-          .width(100)
-          .height(40)
-          .backgroundColor('#ffffff')
-          .borderRadius(8)
-          .padding({ left: 16, right: 16 })
-          .type(InputType.Number)
+        Row() {
+          Text(`${this.selectedYear}年${this.selectedMonth}月`)
+            .fontSize(18)
+            .fontWeight(FontWeight.Bold)
+            .fontColor('#333333')
+            .layoutWeight(1)
 
-        Text('月份：')
-          .fontSize(16)
-          .fontColor('#333333')
-          .margin({ left: 16 })
-
-        TextInput({ text: this.selectedMonth.toString() })
-          .width(60)
-          .height(40)
-          .backgroundColor('#ffffff')
-          .borderRadius(8)
-          .padding({ left: 16, right: 16 })
-          .type(InputType.Number)
-
-        Button('查询')
-          .width(80)
-          .height(40)
-          .margin({ left: 8 })
-          .onClick(() => {
-            this.loadMonthlyStats();
-          })
+          Button('选择月份')
+            .width(120)
+            .height(40)
+            .onClick(() => {
+              this.showDatePicker = true;
+            })
+        }
+        .width('100%')
+        .padding(16)
+        .backgroundColor('#ffffff')
+        .borderRadius(8)
       }
       .width('100%')
       .padding(16)
       .backgroundColor('#ffffff')
+      .margin({ bottom: 1 })
 
       // 月度收入卡片
       Column() {
@@ -422,8 +504,8 @@ struct Statistics {
       .width('100%')
       .padding(24)
       .backgroundColor('#ffffff')
-      .alignItems(HorizontalAlign.Center)
-      .margin({ top: 1 })
+      .borderRadius(8)
+      .margin({ bottom: 1 })
 
       // 月度订单明细
       Column() {
@@ -458,7 +540,7 @@ struct Statistics {
                     Text(this.getStatusText(order.status))
                       .fontSize(12)
                       .fontColor('#ffffff')
-                      .padding({ left: 8, right: 8, top: 2, bottom: 2 })
+                      .padding({ left: 8, right: 8, top: 4, bottom: 4 })
                       .borderRadius(4)
                       .backgroundColor(this.getStatusColor(order.status))
                   }
@@ -503,7 +585,7 @@ struct Statistics {
       }
       .width('100%')
       .backgroundColor('#ffffff')
-      .margin({ top: 1 })
+      .margin({ bottom: 16 })
     }
     .width('100%')
   }

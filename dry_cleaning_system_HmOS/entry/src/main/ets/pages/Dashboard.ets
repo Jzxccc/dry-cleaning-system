@@ -6,6 +6,8 @@ import { statisticsService } from '../api/StatisticsApi';
 import { DateUtil } from '../utils/DateUtil';
 import { MoneyUtil } from '../utils/MoneyUtil';
 
+const LOG_TAG = 'DRY CLEAN SYSTEM LOG:';
+
 /**
  * 功能项类
  */
@@ -34,28 +36,47 @@ struct Dashboard {
   @State isLoading: boolean = true;
 
   aboutToAppear() {
+    console.info(LOG_TAG, 'Dashboard aboutToAppear called');
     this.loadStats();
   }
 
   async loadStats() {
     try {
+      console.info(LOG_TAG, 'loadStats started');
+      
       // 加载今日收入
       const today = DateUtil.getToday();
-      this.todayIncome = await statisticsService.getDailyIncome(today);
-
+      console.info(LOG_TAG, `Loading daily income for: ${today}`);
+      const income = await statisticsService.getDailyIncome(today);
+      console.info(LOG_TAG, `Daily income result: ${income}`);
+      
       // 加载未完成订单数
-      this.unfinishedOrders = await statisticsService.getUnfinishedOrderCount();
-
+      console.info(LOG_TAG, 'Loading unfinished orders count');
+      const unfinished = await statisticsService.getUnfinishedOrderCount();
+      console.info(LOG_TAG, `Unfinished orders result: ${unfinished}`);
+      
       // 加载总客户数
+      console.info(LOG_TAG, 'Loading customers');
       const customers = await customerService.getAllCustomers();
-      this.totalCustomers = customers.length;
-
-      // 今日订单数（简化处理）
+      const customerCount = customers.length;
+      console.info(LOG_TAG, `Customers result: ${customerCount}`);
+      
+      // 更新状态（分开赋值确保 UI 更新）
+      this.todayIncome = income;
+      console.info(LOG_TAG, `Set todayIncome to: ${this.todayIncome}`);
+      
+      this.unfinishedOrders = unfinished;
+      console.info(LOG_TAG, `Set unfinishedOrders to: ${this.unfinishedOrders}`);
+      
+      this.totalCustomers = customerCount;
+      console.info(LOG_TAG, `Set totalCustomers to: ${this.totalCustomers}`);
+      
       this.todayOrders = 0;
-
       this.isLoading = false;
+      
+      console.info(LOG_TAG, 'loadStats completed');
     } catch (error) {
-      console.error('Failed to load stats:', error);
+      console.error(LOG_TAG, 'Failed to load stats:', error);
       this.isLoading = false;
     }
   }
@@ -75,24 +96,39 @@ struct Dashboard {
       // 滚动内容
       Scroll() {
         Column() {
-          // 快速统计卡片
-          Grid() {
-            GridItem() {
-              this.StatCard('今日收入', MoneyUtil.formatInt(this.todayIncome), '#007DFF')
+          // 加载状态
+          if (this.isLoading) {
+            Column() {
+              LoadingProgress()
+                .width(48)
+                .height(48)
+              Text('加载中...')
+                .fontSize(14)
+                .fontColor('#666666')
+                .margin({ top: 16 })
             }
-            GridItem() {
-              this.StatCard('未完成订单', this.unfinishedOrders.toString(), '#FF9800')
+            .width('100%')
+            .padding(40)
+          } else {
+            // 快速统计卡片
+            Grid() {
+              GridItem() {
+                this.StatCard('今日收入', MoneyUtil.formatInt(this.todayIncome), '#007DFF')
+              }
+              GridItem() {
+                this.StatCard('未完成订单', this.unfinishedOrders.toString(), '#FF9800')
+              }
+              GridItem() {
+                this.StatCard('今日订单', this.todayOrders.toString(), '#4CAF50')
+              }
+              GridItem() {
+                this.StatCard('总客户数', this.totalCustomers.toString(), '#9C27B0')
+              }
             }
-            GridItem() {
-              this.StatCard('今日订单', this.todayOrders.toString(), '#4CAF50')
-            }
-            GridItem() {
-              this.StatCard('总客户数', this.totalCustomers.toString(), '#9C27B0')
-            }
+            .columnsTemplate('1fr 1fr')
+            .width('100%')
+            .padding(16)
           }
-          .columnsTemplate('1fr 1fr')
-          .width('100%')
-          .padding(16)
 
           Divider()
             .margin({ top: 8, bottom: 16 })

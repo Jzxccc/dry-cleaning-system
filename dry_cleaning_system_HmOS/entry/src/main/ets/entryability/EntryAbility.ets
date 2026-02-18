@@ -2,6 +2,7 @@ import { AbilityConstant, ConfigurationConstant, UIAbility, Want } from '@kit.Ab
 import { hilog } from '@kit.PerformanceAnalysisKit';
 import { window } from '@kit.ArkUI';
 import { dbHelper } from '../database/DatabaseHelper';
+import { dataInitService } from '../services/DataInitService';
 
 const DOMAIN = 0x0000;
 
@@ -13,6 +14,10 @@ export default class EntryAbility extends UIAbility {
       // 初始化数据库
       await dbHelper.init(this.context);
       hilog.info(DOMAIN, 'testTag', 'Database initialized');
+      
+      // 初始化测试数据（仅首次运行）
+      await dataInitService.initTestData();
+      hilog.info(DOMAIN, 'testTag', 'Test data initialized');
     } catch (err) {
       hilog.error(DOMAIN, 'testTag', 'Failed to initialize. Cause: %{public}s', JSON.stringify(err));
     }

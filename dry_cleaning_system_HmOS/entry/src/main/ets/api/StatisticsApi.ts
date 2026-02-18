@@ -1,5 +1,7 @@
 import { dbHelper, Tables, OrderColumns } from '../database/DatabaseHelper';
 
+const LOG_TAG = 'DRY CLEAN SYSTEM LOG:';
+
 /**
  * 统计服务类（本地数据库版本）
  */
@@ -9,45 +11,69 @@ export class StatisticsService {
    * 获取日收入
    */
   async getDailyIncome(date: string): Promise<number> {
-    const orders = await dbHelper.getAllOrders();
-    const targetDate = date.split('T')[0];
-    
-    return orders
-      .filter(order => {
-        const orderDate = order.createTime.split('T')[0];
-        return orderDate === targetDate;
-      })
-      .reduce((sum, order) => sum + order.totalPrice, 0);
+    try {
+      const orders = await dbHelper.getAllOrders();
+      const targetDate = date.split('T')[0];
+      
+      const income = orders
+        .filter(order => {
+          const orderDate = order.createTime ? order.createTime.split('T')[0] : '';
+          return orderDate === targetDate;
+        })
+        .reduce((sum, order) => sum + order.totalPrice, 0);
+      
+      console.info(LOG_TAG, `getDailyIncome(${date}): ${income}`);
+      return income;
+    } catch (error) {
+      console.error(LOG_TAG, 'getDailyIncome error:', error);
+      return 0;
+    }
   }
 
   /**
    * 获取月收入
    */
   async getMonthlyIncome(year: number, month: number): Promise<number> {
-    const orders = await dbHelper.getAllOrders();
-    
-    return orders
-      .filter(order => {
-        const orderDate = new Date(order.createTime);
-        return orderDate.getFullYear() === year && 
-               (orderDate.getMonth() + 1) === month;
-      })
-      .reduce((sum, order) => sum + order.totalPrice, 0);
+    try {
+      const orders = await dbHelper.getAllOrders();
+      
+      const income = orders
+        .filter(order => {
+          const orderDate = new Date(order.createTime);
+          return orderDate.getFullYear() === year && 
+                 (orderDate.getMonth() + 1) === month;
+        })
+        .reduce((sum, order) => sum + order.totalPrice, 0);
+      
+      console.info(LOG_TAG, `getMonthlyIncome(${year}-${month}): ${income}`);
+      return income;
+    } catch (error) {
+      console.error(LOG_TAG, 'getMonthlyIncome error:', error);
+      return 0;
+    }
   }
 
   /**
    * 获取现金收入
    */
   async getCashIncome(date: string): Promise<number> {
-    const orders = await dbHelper.getAllOrders();
-    const targetDate = date.split('T')[0];
-    
-    return orders
-      .filter(order => {
-        const orderDate = order.createTime.split('T')[0];
-        return orderDate === targetDate && order.payType === 'CASH';
-      })
-      .reduce((sum, order) => sum + order.totalPrice, 0);
+    try {
+      const orders = await dbHelper.getAllOrders();
+      const targetDate = date.split('T')[0];
+      
+      const income = orders
+        .filter(order => {
+          const orderDate = order.createTime ? order.createTime.split('T')[0] : '';
+          return orderDate === targetDate && order.payType === 'CASH';
+        })
+        .reduce((sum, order) => sum + order.totalPrice, 0);
+      
+      console.info(LOG_TAG, `getCashIncome(${date}): ${income}`);
+      return income;
+    } catch (error) {
+      console.error(LOG_TAG, 'getCashIncome error:', error);
+      return 0;
+    }
   }
 
   /**
@@ -55,6 +81,7 @@ export class StatisticsService {
    */
   async getPrepaidIncome(date: string): Promise<number> {
     // 需要从充值记录表查询，简化处理返回 0
+    console.info(LOG_TAG, `getPrepaidIncome(${date}): 0`);
     return 0;
   }
 
@@ -62,8 +89,15 @@ export class StatisticsService {
    * 获取未完成订单数
    */
   async getUnfinishedOrderCount(): Promise<number> {
-    const orders = await dbHelper.getAllOrders();
-    return orders.filter(order => order.status !== 'FINISHED').length;
+    try {
+      const orders = await dbHelper.getAllOrders();
+      const count = orders.filter(order => order.status !== 'FINISHED').length;
+      console.info(LOG_TAG, `getUnfinishedOrderCount: ${count}`);
+      return count;
+    } catch (error) {
+      console.error(LOG_TAG, 'getUnfinishedOrderCount error:', error);
+      return 0;
+    }
   }
 
   /**

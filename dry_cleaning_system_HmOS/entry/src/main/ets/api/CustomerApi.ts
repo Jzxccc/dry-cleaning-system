@@ -1,6 +1,8 @@
 import { Customer, CreateCustomerRequest } from '../models/Customer';
 import { dbHelper } from '../database/DatabaseHelper';
 
+const LOG_TAG = 'DRY CLEAN SYSTEM LOG:';
+
 /**
  * 客户服务类（本地数据库版本）
  */
@@ -10,17 +12,14 @@ export class CustomerService {
    * 获取所有客户
    */
   async getAllCustomers(): Promise<Customer[]> {
-    const customers = await dbHelper.getAllCustomers();
-    
-    // 预览器模式下返回测试数据
-    if (customers.length === 0) {
-      return [
-        { id: 1, name: '张三', phone: '13912345678', wechat: 'zhangsan', balance: 100, createTime: new Date().toISOString() },
-        { id: 2, name: '李四', phone: '13887654321', wechat: 'lisi', balance: 200, createTime: new Date().toISOString() }
-      ];
+    try {
+      const customers = await dbHelper.getAllCustomers();
+      console.info(LOG_TAG, `getAllCustomers: found ${customers.length} customers`);
+      return customers;
+    } catch (error) {
+      console.error(LOG_TAG, 'getAllCustomers error:', error);
+      return [];
     }
-    
-    return customers;
   }
 
   /**
@@ -104,8 +103,14 @@ export class CustomerService {
    * 删除客户
    */
   async deleteCustomer(id: number): Promise<void> {
-    // 注意：当前数据库 helper 需要添加 delete 方法
-    console.info(`Delete customer: ${id}`);
+    try {
+      // 从数据库中删除
+      await dbHelper.deleteCustomer(id);
+      console.info(LOG_TAG, `Customer deleted: ${id}`);
+    } catch (error) {
+      console.error(LOG_TAG, 'deleteCustomer error:', error);
+      throw error;
+    }
   }
 }
 

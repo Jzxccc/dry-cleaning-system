@@ -5,6 +5,8 @@ import { customerService } from '../api/CustomerApi';
 import { MoneyUtil } from '../utils/MoneyUtil';
 import { globalState } from '../utils/GlobalState';
 
+const LOG_TAG = 'DRY CLEAN SYSTEM LOG:';
+
 /**
  * 客户列表页面
  */
@@ -58,8 +60,41 @@ struct CustomerList {
       }
       this.isLoading = false;
     } catch (error) {
-      console.error('Failed to search customers:', error);
+      console.error(LOG_TAG, 'Failed to search customers:', error);
       this.isLoading = false;
+    }
+  }
+
+  async deleteCustomer(customerId: number, index: number) {
+    try {
+      // 显示确认对话框
+      const result = await promptAction.showDialog({
+        title: '确认删除',
+        message: '确定要删除该客户吗？删除后无法恢复。',
+        buttons: [
+          { text: '取消', color: '#666666' },
+          { text: '删除', color: '#ff4444' }
+        ]
+      });
+
+      if (result.index === 1) {
+        // 用户确认删除
+        this.isLoading = true;
+        
+        // 从列表中移除
+        this.customers.splice(index, 1);
+        
+        // 调用删除 API（如果已实现）
+        await customerService.deleteCustomer(customerId);
+        
+        console.info(LOG_TAG, `Customer deleted: ${customerId}`);
+        this.isLoading = false;
+        promptAction.showToast({ message: '客户已删除' });
+      }
+    } catch (error) {
+      console.error(LOG_TAG, 'Failed to delete customer:', error);
+      this.isLoading = false;
+      promptAction.showToast({ message: '删除失败，请重试' });
     }
   }
 
@@ -141,7 +176,7 @@ struct CustomerList {
         .justifyContent(FlexAlign.Center)
       } else {
         List() {
-          ForEach(this.customers, (customer: Customer) => {
+          ForEach(this.customers, (customer: Customer, index: number) => {
             ListItem() {
               Row() {
                 Column() {
@@ -164,6 +199,18 @@ struct CustomerList {
                     .fontColor('#007DFF')
                 }
                 .alignItems(HorizontalAlign.End)
+
+                // 删除按钮
+                Button('删除')
+                  .width(70)
+                  .height(36)
+                  .fontSize(14)
+                  .backgroundColor('#ff4444')
+                  .fontColor('#ffffff')
+                  .margin({ left: 16 })
+                  .onClick(() => {
+                    this.deleteCustomer(customer.id, index);
+                  })
               }
               .width('100%')
               .padding(16)

@@ -1,6 +1,8 @@
 import { Order, CreateOrderRequest, Clothes, CreateClothesRequest } from '../models/Order';
 import { dbHelper, Tables, OrderColumns } from '../database/DatabaseHelper';
 
+const LOG_TAG = 'DRY CLEAN SYSTEM LOG:';
+
 /**
  * 订单服务类（本地数据库版本）
  */
@@ -49,15 +51,23 @@ export class OrderService {
    * 模糊搜索订单
    */
   async fuzzySearch(params?: { orderNo?: string, customerName?: string, clothesType?: string }): Promise<Order[]> {
-    const orders = await dbHelper.getAllOrders();
-    
-    if (!params) return orders;
-    
-    return orders.filter(order => {
-      if (params.orderNo && !order.orderNo.includes(params.orderNo)) return false;
-      // customerName 和 clothesType 需要关联查询，简化处理
-      return true;
-    });
+    try {
+      const orders = await dbHelper.getAllOrders();
+      
+      if (!params) return orders;
+      
+      const filtered = orders.filter(order => {
+        if (params.orderNo && !order.orderNo.includes(params.orderNo)) return false;
+        // customerName 和 clothesType 需要关联查询，简化处理
+        return true;
+      });
+      
+      console.info(LOG_TAG, `fuzzySearch: found ${filtered.length} orders`);
+      return filtered;
+    } catch (error) {
+      console.error(LOG_TAG, 'fuzzySearch error:', error);
+      return [];
+    }
   }
 
   /**

@@ -107,12 +107,18 @@ struct Recharge {
 
       promptAction.showToast({ message: `充值成功！${result}` });
       this.isLoading = false;
-      
+
+      // 更新客户余额显示
+      if (this.selectedCustomer) {
+        const giftAmount = amount * 0.2;
+        this.selectedCustomer.balance = (this.selectedCustomer.balance || 0) + amount + giftAmount;
+      }
+
       // 重置表单
       this.rechargeAmount = '';
       this.giftAmount = 0;
       this.totalAmount = 0;
-      
+
       // 刷新记录
       this.loadRechargeRecords();
     } catch (error) {

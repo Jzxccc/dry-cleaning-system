@@ -5,6 +5,7 @@ import { orderService } from '../api/OrderApi';
 import { statisticsService } from '../api/StatisticsApi';
 import { DateUtil } from '../utils/DateUtil';
 import { MoneyUtil } from '../utils/MoneyUtil';
+import { eventBus, AppEvents } from '../utils/EventBus';
 
 const LOG_TAG = 'DRY CLEAN SYSTEM LOG:';
 
@@ -34,46 +35,84 @@ struct Dashboard {
   @State todayOrders: number = 0;
   @State totalCustomers: number = 0;
   @State isLoading: boolean = true;
+  
+  // 事件回调引用，用于取消订阅
+  private dataChangedCallback: () => void = () => {};
 
   aboutToAppear() {
     console.info(LOG_TAG, 'Dashboard aboutToAppear called');
     this.loadStats();
+    
+    // 保存回调引用
+    this.dataChangedCallback = () => {
+      console.info(LOG_TAG, 'Dashboard received DATA_CHANGED event');
+      this.loadStats();
+    };
+    
+    // 订阅数据变化事件
+    eventBus.on(AppEvents.DATA_CHANGED, this.dataChangedCallback);
+    console.info(LOG_TAG, 'Dashboard subscribed to DATA_CHANGED event');
+  }
+
+  onPageShow() {
+    // 页面显示时刷新数据（从其他页面返回时更新）
+    console.info(LOG_TAG, 'Dashboard onPageShow called');
+    this.loadStats();
+    
+    // 确保订阅存在
+    if (!eventBus.listeners.has(AppEvents.DATA_CHANGED)) {
+      eventBus.on(AppEvents.DATA_CHANGED, this.dataChangedCallback);
+      console.info(LOG_TAG, 'Dashboard re-subscribed to DATA_CHANGED event');
+    }
+  }
+
+  onDestroy() {
+    // 组件销毁时取消订阅，避免内存泄漏
+    eventBus.off(AppEvents.DATA_CHANGED, this.dataChangedCallback);
+    console.info(LOG_TAG, 'Dashboard unsubscribed from DATA_CHANGED event');
   }
 
   async loadStats() {
     try {
       console.info(LOG_TAG, 'loadStats started');
-      
+
       // 加载今日收入
       const today = DateUtil.getToday();
       console.info(LOG_TAG, `Loading daily income for: ${today}`);
       const income = await statisticsService.getDailyIncome(today);
       console.info(LOG_TAG, `Daily income result: ${income}`);
-      
+
       // 加载未完成订单数
       console.info(LOG_TAG, 'Loading unfinished orders count');
       const unfinished = await statisticsService.getUnfinishedOrderCount();
       console.info(LOG_TAG, `Unfinished orders result: ${unfinished}`);
-      
+
       // 加载总客户数
       console.info(LOG_TAG, 'Loading customers');
       const customers = await customerService.getAllCustomers();
       const customerCount = customers.length;
       console.info(LOG_TAG, `Customers result: ${customerCount}`);
-      
+
+      // 加载今日订单数
+      console.info(LOG_TAG, 'Loading today orders count');
+      const todayOrdersCount = await statisticsService.getTodayOrderCount(today);
+      console.info(LOG_TAG, `Today orders result: ${todayOrdersCount}`);
+
       // 更新状态（分开赋值确保 UI 更新）
       this.todayIncome = income;
       console.info(LOG_TAG, `Set todayIncome to: ${this.todayIncome}`);
-      
+
       this.unfinishedOrders = unfinished;
       console.info(LOG_TAG, `Set unfinishedOrders to: ${this.unfinishedOrders}`);
-      
+
       this.totalCustomers = customerCount;
       console.info(LOG_TAG, `Set totalCustomers to: ${this.totalCustomers}`);
-      
-      this.todayOrders = 0;
+
+      this.todayOrders = todayOrdersCount;
+      console.info(LOG_TAG, `Set todayOrders to: ${this.todayOrders}`);
+
       this.isLoading = false;
-      
+
       console.info(LOG_TAG, 'loadStats completed');
     } catch (error) {
       console.error(LOG_TAG, 'Failed to load stats:', error);
@@ -113,16 +152,84 @@ struct Dashboard {
             // 快速统计卡片
             Grid() {
               GridItem() {
-                this.StatCard('今日收入', MoneyUtil.formatInt(this.todayIncome), '#007DFF')
+                Column() {
+                  Text(MoneyUtil.formatInt(this.todayIncome))
+                    .fontSize(32)
+                    .fontWeight(FontWeight.Bold)
+                    .fontColor('#007DFF')
+                    .margin({ bottom: 8 })
+
+                  Text('今日收入')
+                    .fontSize(14)
+                    .fontColor('#666666')
+                }
+                .width('45%')
+                .height(120)
+                .backgroundColor('#ffffff')
+                .borderRadius(12)
+                .margin(8)
+                .justifyContent(FlexAlign.Center)
+                .alignItems(HorizontalAlign.Center)
               }
               GridItem() {
-                this.StatCard('未完成订单', this.unfinishedOrders.toString(), '#FF9800')
+                Column() {
+                  Text(this.unfinishedOrders.toString())
+                    .fontSize(32)
+                    .fontWeight(FontWeight.Bold)
+                    .fontColor('#FF9800')
+                    .margin({ bottom: 8 })
+
+                  Text('未完成订单')
+                    .fontSize(14)
+                    .fontColor('#666666')
+                }
+                .width('45%')
+                .height(120)
+                .backgroundColor('#ffffff')
+                .borderRadius(12)
+                .margin(8)
+                .justifyContent(FlexAlign.Center)
+                .alignItems(HorizontalAlign.Center)
               }
               GridItem() {
-                this.StatCard('今日订单', this.todayOrders.toString(), '#4CAF50')
+                Column() {
+                  Text(this.todayOrders.toString())
+                    .fontSize(32)
+                    .fontWeight(FontWeight.Bold)
+                    .fontColor('#4CAF50')
+                    .margin({ bottom: 8 })
+
+                  Text('今日订单')
+                    .fontSize(14)
+                    .fontColor('#666666')
+                }
+                .width('45%')
+                .height(120)
+                .backgroundColor('#ffffff')
+                .borderRadius(12)
+                .margin(8)
+                .justifyContent(FlexAlign.Center)
+                .alignItems(HorizontalAlign.Center)
               }
               GridItem() {
-                this.StatCard('总客户数', this.totalCustomers.toString(), '#9C27B0')
+                Column() {
+                  Text(this.totalCustomers.toString())
+                    .fontSize(32)
+                    .fontWeight(FontWeight.Bold)
+                    .fontColor('#9C27B0')
+                    .margin({ bottom: 8 })
+
+                  Text('总客户数')
+                    .fontSize(14)
+                    .fontColor('#666666')
+                }
+                .width('45%')
+                .height(120)
+                .backgroundColor('#ffffff')
+                .borderRadius(12)
+                .margin(8)
+                .justifyContent(FlexAlign.Center)
+                .alignItems(HorizontalAlign.Center)
               }
             }
             .columnsTemplate('1fr 1fr')

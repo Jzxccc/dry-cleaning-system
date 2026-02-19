@@ -8,22 +8,27 @@ const LOG_TAG = 'DRY CLEAN SYSTEM LOG:';
 export class StatisticsService {
   
   /**
-   * 获取日收入
+   * 获取日收入（现金收入 + 充值收入）
    */
   async getDailyIncome(date: string): Promise<number> {
     try {
       const orders = await dbHelper.getAllOrders();
       const targetDate = date.split('T')[0];
-      
-      const income = orders
+
+      // 现金收入
+      const cashIncome = orders
         .filter(order => {
           const orderDate = order.createTime ? order.createTime.split('T')[0] : '';
-          return orderDate === targetDate;
+          return orderDate === targetDate && order.payType === 'CASH';
         })
         .reduce((sum, order) => sum + order.totalPrice, 0);
-      
-      console.info(LOG_TAG, `getDailyIncome(${date}): ${income}`);
-      return income;
+
+      // 充值收入
+      const rechargeIncome = await dbHelper.getRechargeRecordsByDate(date);
+
+      const totalIncome = cashIncome + rechargeIncome;
+      console.info(LOG_TAG, `getDailyIncome(${date}): ${totalIncome} (cash: ${cashIncome}, recharge: ${rechargeIncome})`);
+      return totalIncome;
     } catch (error) {
       console.error(LOG_TAG, 'getDailyIncome error:', error);
       return 0;
@@ -80,9 +85,30 @@ export class StatisticsService {
    * 获取储值收入（充值金额）
    */
   async getPrepaidIncome(date: string): Promise<number> {
-    // 需要从充值记录表查询，简化处理返回 0
+    // TODO: 需要从充值记录表查询
     console.info(LOG_TAG, `getPrepaidIncome(${date}): 0`);
     return 0;
+  }
+
+  /**
+   * 获取今日订单数
+   */
+  async getTodayOrderCount(date: string): Promise<number> {
+    try {
+      const orders = await dbHelper.getAllOrders();
+      const targetDate = date.split('T')[0];
+
+      const count = orders.filter(order => {
+        const orderDate = order.createTime ? order.createTime.split('T')[0] : '';
+        return orderDate === targetDate;
+      }).length;
+
+      console.info(LOG_TAG, `getTodayOrderCount(${date}): ${count}`);
+      return count;
+    } catch (error) {
+      console.error(LOG_TAG, 'getTodayOrderCount error:', error);
+      return 0;
+    }
   }
 
   /**

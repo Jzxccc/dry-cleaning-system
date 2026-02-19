@@ -46,6 +46,12 @@ public class StatisticsController {
         return ResponseEntity.ok(count);
     }
 
+    @GetMapping("/today-orders-count")
+    public ResponseEntity<Long> getTodayOrderCount(@RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
+        Long count = statisticsService.getTodayOrderCount(date);
+        return ResponseEntity.ok(count);
+    }
+
     @GetMapping("/daily")
     public ResponseEntity<Map<String, Object>> getDailyStatistics(@RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
         Map<String, Object> stats = statisticsService.getDailyStatistics(date);

@@ -2,6 +2,7 @@ import router from '@ohos.router';
 import { promptAction } from '@kit.ArkUI';
 import { Customer, CreateCustomerRequest } from '../models/Customer';
 import { customerService } from '../api/CustomerApi';
+import { eventBus, AppEvents } from '../utils/EventBus';
 
 /**
  * 客户编辑页面 - 用于添加和编辑客户
@@ -77,6 +78,9 @@ struct CustomerEdit {
 
       this.isLoading = false;
       router.back();
+      
+      // 发布数据变化事件，刷新 Dashboard
+      eventBus.emit(AppEvents.DATA_CHANGED);
     } catch (error) {
       console.error('Failed to save customer:', error);
       this.isLoading = false;

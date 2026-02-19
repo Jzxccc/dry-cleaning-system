@@ -148,6 +148,25 @@ public class StatisticsServiceImpl implements StatisticsService {
     }
 
     @Override
+    public Long getTodayOrderCount(LocalDate date) {
+        LocalDateTime startOfDay = date.atStartOfDay();
+        LocalDateTime endOfDay = date.atTime(LocalTime.MAX);
+
+        List<Order> orders = orderMapper.selectList(null);
+        return orders.stream()
+                .filter(order -> order.getCreateTime() != null)
+                .filter(order -> {
+                    try {
+                        LocalDateTime createTime = LocalDateTime.parse(order.getCreateTime());
+                        return createTime.isAfter(startOfDay) && createTime.isBefore(endOfDay);
+                    } catch (Exception e) {
+                        return false;
+                    }
+                })
+                .count();
+    }
+
+    @Override
     public Map<String, Object> getDailyStatistics(LocalDate date) {
         Map<String, Object> stats = new HashMap<>();
         stats.put("dailyIncome", getDailyIncome(date));

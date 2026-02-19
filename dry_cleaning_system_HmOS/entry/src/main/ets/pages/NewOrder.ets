@@ -5,6 +5,7 @@ import { Order, CreateOrderRequest, Clothes, CreateClothesRequest } from '../mod
 import { customerService } from '../api/CustomerApi';
 import { orderService } from '../api/OrderApi';
 import { MoneyUtil } from '../utils/MoneyUtil';
+import { eventBus, AppEvents } from '../utils/EventBus';
 import { globalState } from '../utils/GlobalState';
 
 /**
@@ -173,6 +174,9 @@ struct NewOrder {
       promptAction.showToast({ message: `订单创建成功！订单号：${orderNo}` });
       this.isLoading = false;
       router.back();
+      
+      // 发布数据变化事件，刷新 Dashboard
+      eventBus.emit(AppEvents.DATA_CHANGED);
     } catch (error) {
       console.error('Failed to create order:', error);
       this.isLoading = false;

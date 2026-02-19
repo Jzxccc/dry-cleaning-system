@@ -4,6 +4,7 @@ import { Customer } from '../models/Customer';
 import { customerService } from '../api/CustomerApi';
 import { MoneyUtil } from '../utils/MoneyUtil';
 import { globalState } from '../utils/GlobalState';
+import { eventBus, AppEvents } from '../utils/EventBus';
 
 const LOG_TAG = 'DRY CLEAN SYSTEM LOG:';
 
@@ -84,12 +85,15 @@ struct CustomerList {
         // 从列表中移除
         this.customers.splice(index, 1);
         
-        // 调用删除 API（如果已实现）
+        // 调用删除 API
         await customerService.deleteCustomer(customerId);
         
         console.info(LOG_TAG, `Customer deleted: ${customerId}`);
         this.isLoading = false;
         promptAction.showToast({ message: '客户已删除' });
+        
+        // 发布数据变化事件，刷新 Dashboard
+        eventBus.emit(AppEvents.DATA_CHANGED);
       }
     } catch (error) {
       console.error(LOG_TAG, 'Failed to delete customer:', error);

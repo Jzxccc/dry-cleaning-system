@@ -9,6 +9,7 @@ public interface StatisticsService {
     Double getCashIncome(LocalDate date);
     Double getPrepaidIncome(LocalDate date);
     Long getUnfinishedOrderCount();
+    Long getTodayOrderCount(LocalDate date);
     Map<String, Object> getDailyStatistics(LocalDate date);
     Map<String, Object> getMonthlyStatistics(int year, int month);
 }

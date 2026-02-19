@@ -441,6 +441,38 @@ export class DatabaseHelper {
   }
 
   /**
+   * 获取指定日期的充值记录
+   */
+  async getRechargeRecordsByDate(date: string): Promise<number> {
+    if (!this.rdbStore) return 0;
+
+    try {
+      const predicates = new relationalStore.RdbPredicates(Tables.RECHARGE_RECORD);
+      const resultSet = await this.rdbStore.query(predicates);
+
+      let totalAmount = 0;
+      const targetDate = date.split('T')[0];
+
+      while (resultSet.goToNextRow()) {
+        const createTime = resultSet.getString(resultSet.getColumnIndex('create_time'));
+        const recordDate = createTime ? createTime.split('T')[0] : '';
+        
+        if (recordDate === targetDate) {
+          const rechargeAmount = resultSet.getDouble(resultSet.getColumnIndex('recharge_amount'));
+          totalAmount += rechargeAmount;
+        }
+      }
+
+      resultSet.close();
+      console.info(`getRechargeRecordsByDate(${date}): ${totalAmount}`);
+      return totalAmount;
+    } catch (error) {
+      console.error('getRechargeRecordsByDate error:', error);
+      return 0;
+    }
+  }
+
+  /**
    * 清空所有数据
    */
   async clearAllData(): Promise<void> {

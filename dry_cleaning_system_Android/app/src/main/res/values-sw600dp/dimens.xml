@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 平板布局配置 (sw600dp - 最小宽度 600dp 的设备) -->
+    
+    <!-- 平板卡片间距 -->
+    <dimen name="card_margin">16dp</dimen>
+    
+    <!-- 平板列表项高度 -->
+    <dimen name="list_item_min_height">80dp</dimen>
+    
+    <!-- 平板网格列数 -->
+    <integer name="grid_columns">3</integer>
+    
+    <!-- 平板字体大小放大 -->
+    <dimen name="text_size_small">14sp</dimen>
+    <dimen name="text_size_normal">16sp</dimen>
+    <dimen name="text_size_large">18sp</dimen>
+    <dimen name="text_size_xlarge">24sp</dimen>
+</resources>

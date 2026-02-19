@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 横屏布局配置 (land) -->
+    
+    <!-- 横屏时卡片间距 -->
+    <dimen name="card_margin">16dp</dimen>
+    
+    <!-- 横屏时列表项高度 -->
+    <dimen name="list_item_min_height">64dp</dimen>
+    
+    <!-- 横屏时网格列数参考值 -->
+    <integer name="grid_columns">4</integer>
+</resources>

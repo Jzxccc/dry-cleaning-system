@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 平板兼容性配置 -->
+    
+    <!-- 支持大屏幕 -->
+    <bool name="is_large_tablet">true</bool>
+    
+    <!-- 默认横屏模式 -->
+    <bool name="prefer_landscape">true</bool>
+    
+    <!-- 最小宽度 (7 英寸平板约 600dp, 10 英寸平板约 800dp) -->
+    <dimen name="min_tablet_width">600dp</dimen>
+    
+    <!-- 卡片间距 (平板上更大) -->
+    <dimen name="card_margin">8dp</dimen>
+    <dimen name="card_margin_tablet">16dp</dimen>
+    
+    <!-- 字体大小缩放 -->
+    <dimen name="text_size_small">12sp</dimen>
+    <dimen name="text_size_normal">14sp</dimen>
+    <dimen name="text_size_large">16sp</dimen>
+    <dimen name="text_size_xlarge">20sp</dimen>
+    
+    <!-- 触摸目标最小尺寸 (符合 Material Design 规范) -->
+    <dimen name="touch_target_min_size">48dp</dimen>
+    
+    <!-- 列表项最小高度 -->
+    <dimen name="list_item_min_height">72dp</dimen>
+</resources>

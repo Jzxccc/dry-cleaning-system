@@ -4,3 +4,7 @@ qwen --resume 2534cb8f-1fe1-43bb-9476-3cdbc4040014
 
 // 模糊查询
 qwen --resume e70fab53-ab94-44f4-a673-a0b0b471aafe
+
+// android
+
+qwen --resume 2a3ce983-30ff-4147-a2c5-d2055cca1e12

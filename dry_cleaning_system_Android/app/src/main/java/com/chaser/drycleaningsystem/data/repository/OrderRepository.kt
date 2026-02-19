@@ -42,4 +42,21 @@ class OrderRepository(private val orderDao: OrderDao) {
     suspend fun deleteById(orderId: Long) {
         orderDao.deleteById(orderId)
     }
+
+    // 统计相关方法
+    suspend fun getOrdersByDate(timestamp: Long): List<Order> {
+        return orderDao.getOrdersByDate(timestamp)
+    }
+
+    suspend fun getOrdersByMonth(timestamp: Long): List<Order> {
+        return orderDao.getOrdersByMonth(timestamp)
+    }
+
+    suspend fun getCashIncomeByDate(timestamp: Long): Double? {
+        return orderDao.getCashIncomeByDate(timestamp)
+    }
+
+    suspend fun getCashIncomeByMonth(timestamp: Long): Double? {
+        return orderDao.getCashIncomeByMonth(timestamp)
+    }
 }

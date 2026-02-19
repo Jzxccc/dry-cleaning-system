@@ -10,6 +10,8 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 
 /**
@@ -25,8 +27,18 @@ class RechargeViewModel(
 
     val allCustomers: Flow<List<Customer>> = customerRepository.allCustomers
 
-    val searchResults: Flow<List<Customer>> = searchQuery
-        .catch { emit(emptyList()) }
+    val searchResults: Flow<List<Customer>> = _searchQuery
+        .catch { e -> emit("") }
+        .map { query ->
+            if (query.isBlank()) {
+                allCustomers.first()
+            } else {
+                allCustomers.first().filter { customer ->
+                    customer.name.contains(query, ignoreCase = true) ||
+                    (customer.phone?.contains(query) == true)
+                }
+            }
+        }
 
     private val _selectedCustomer = MutableStateFlow<Customer?>(null)
     val selectedCustomer: StateFlow<Customer?> = _selectedCustomer

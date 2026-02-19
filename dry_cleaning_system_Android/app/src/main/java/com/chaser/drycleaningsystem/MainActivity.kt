@@ -9,6 +9,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -45,6 +46,7 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun AppNavHost() {
     val navController = rememberNavController()
+    val context = LocalContext.current
 
     NavHost(
         navController = navController,
@@ -58,13 +60,13 @@ fun AppNavHost() {
                 onNavigateToStatistics = { navController.navigate("statistics") }
             )
         }
-        composable("customers") { backStackEntry ->
+        composable("customers") {
             val viewModel: CustomerViewModel = viewModel(
                 factory = object : androidx.lifecycle.ViewModelProvider.Factory {
                     override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
                         @Suppress("UNCHECKED_CAST")
                         return CustomerViewModel(
-                            DataInjection.getCustomerRepository(backStackEntry.context)
+                            DataInjection.getCustomerRepository(context)
                         ) as T
                     }
                 }
@@ -75,15 +77,15 @@ fun AppNavHost() {
                 onEditCustomer = { }
             )
         }
-        composable("orders") { backStackEntry ->
+        composable("orders") {
             val viewModel: OrderViewModel = viewModel(
                 factory = object : androidx.lifecycle.ViewModelProvider.Factory {
                     override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
                         @Suppress("UNCHECKED_CAST")
                         return OrderViewModel(
-                            orderRepository = DataInjection.getOrderRepository(backStackEntry.context),
-                            customerRepository = DataInjection.getCustomerRepository(backStackEntry.context),
-                            clothesRepository = DataInjection.getClothesRepository(backStackEntry.context)
+                            orderRepository = DataInjection.getOrderRepository(context),
+                            customerRepository = DataInjection.getCustomerRepository(context),
+                            clothesRepository = DataInjection.getClothesRepository(context)
                         ) as T
                     }
                 }
@@ -94,14 +96,14 @@ fun AppNavHost() {
                 onOrderClick = { }
             )
         }
-        composable("recharge") { backStackEntry ->
+        composable("recharge") {
             val viewModel: RechargeViewModel = viewModel(
                 factory = object : androidx.lifecycle.ViewModelProvider.Factory {
                     override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
                         @Suppress("UNCHECKED_CAST")
                         return RechargeViewModel(
-                            customerRepository = DataInjection.getCustomerRepository(backStackEntry.context),
-                            rechargeRecordRepository = DataInjection.getRechargeRecordRepository(backStackEntry.context)
+                            customerRepository = DataInjection.getCustomerRepository(context),
+                            rechargeRecordRepository = DataInjection.getRechargeRecordRepository(context)
                         ) as T
                     }
                 }
@@ -111,14 +113,14 @@ fun AppNavHost() {
                 onNavigateBack = { navController.popBackStack() }
             )
         }
-        composable("statistics") { backStackEntry ->
+        composable("statistics") {
             val viewModel: StatisticsViewModel = viewModel(
                 factory = object : androidx.lifecycle.ViewModelProvider.Factory {
                     override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
                         @Suppress("UNCHECKED_CAST")
                         return StatisticsViewModel(
-                            orderRepository = DataInjection.getOrderRepository(backStackEntry.context),
-                            rechargeRecordRepository = DataInjection.getRechargeRecordRepository(backStackEntry.context)
+                            orderRepository = DataInjection.getOrderRepository(context),
+                            rechargeRecordRepository = DataInjection.getRechargeRecordRepository(context)
                         ) as T
                     }
                 }

@@ -265,18 +265,18 @@ fun IncomeStatCard(
             // 未完成订单数
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
                     text = "待取件订单",
                     style = MaterialTheme.typography.bodyLarge
-                ) {
-                    Text(
-                        text = "$pendingOrders 单",
-                        style = MaterialTheme.typography.titleMedium,
-                        color = if (pendingOrders > 0) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface
-                    )
-                }
+                )
+                Text(
+                    text = "$pendingOrders 单",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = if (pendingOrders > 0) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface
+                )
             }
         }
     }

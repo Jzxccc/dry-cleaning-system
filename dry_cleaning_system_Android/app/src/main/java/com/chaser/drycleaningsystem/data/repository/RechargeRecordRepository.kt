@@ -28,4 +28,13 @@ class RechargeRecordRepository(private val rechargeRecordDao: RechargeRecordDao)
     suspend fun delete(record: RechargeRecord) {
         rechargeRecordDao.delete(record)
     }
+
+    // 统计相关方法
+    suspend fun getRechargeIncomeByDate(date: Long): Double? {
+        return rechargeRecordDao.getRechargeIncomeByDate(date)
+    }
+
+    suspend fun getRechargeIncomeByMonth(timestamp: Long): Double? {
+        return rechargeRecordDao.getRechargeIncomeByMonth(timestamp)
+    }
 }

@@ -8,6 +8,8 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 
 /**
@@ -17,11 +19,21 @@ class CustomerViewModel(private val repository: CustomerRepository) : ViewModel(
     
     private val _searchQuery = MutableStateFlow("")
     val searchQuery: StateFlow<String> = _searchQuery
-    
+
     val allCustomers: Flow<List<Customer>> = repository.allCustomers
-    
-    val searchResults: Flow<List<Customer>> = searchQuery
-        .catch { emit(emptyList()) }
+
+    val searchResults: Flow<List<Customer>> = _searchQuery
+        .catch { e -> emit("") }
+        .map { query ->
+            if (query.isBlank()) {
+                allCustomers.first()
+            } else {
+                allCustomers.first().filter { customer ->
+                    customer.name.contains(query, ignoreCase = true) ||
+                    (customer.phone?.contains(query) == true)
+                }
+            }
+        }
     
     private val _uiState = MutableStateFlow<CustomerUiState>(CustomerUiState.Loading)
     val uiState: StateFlow<CustomerUiState> = _uiState

@@ -76,20 +76,26 @@ class OrderViewModel(
                     orderNo = orderNo,
                     customerId = customerId,
                     totalPrice = totalPrice,
+                    prepaid = 0.0,
                     payType = payType,
                     urgent = if (urgent) 1 else 0,
-                    status = "UNWASHED"
+                    status = "UNWASHED",
+                    expectedTime = null,
+                    createTime = System.currentTimeMillis().toString()
                 )
-                
+
                 val orderId = orderRepository.insert(order)
-                
+
                 // 添加衣物
                 clothesList.forEach { clothesItem ->
                     val clothes = Clothes(
                         orderId = orderId.toString(),
                         type = clothesItem.type,
                         price = clothesItem.price,
-                        status = "UNWASHED"
+                        damageRemark = null,
+                        damageImage = null,
+                        status = "UNWASHED",
+                        createTime = System.currentTimeMillis().toString()
                     )
                     clothesRepository.insert(clothes)
                 }

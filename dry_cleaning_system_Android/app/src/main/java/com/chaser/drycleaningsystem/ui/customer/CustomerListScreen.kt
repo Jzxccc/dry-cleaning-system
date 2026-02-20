@@ -1,5 +1,6 @@
 package com.chaser.drycleaningsystem.ui.customer
 
+import android.util.Log
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -24,9 +25,10 @@ import com.chaser.drycleaningsystem.data.entity.Customer
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CustomerListScreen(
-    viewModel: CustomerViewModel = viewModel(),
+    viewModel: CustomerViewModel,
     onAddCustomer: () -> Unit,
-    onEditCustomer: (Customer) -> Unit
+    onEditCustomer: (Customer) -> Unit,
+    onCustomerClick: (Customer) -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
     var searchQuery by remember { mutableStateOf("") }
@@ -91,8 +93,18 @@ fun CustomerListScreen(
                             items(customers, key = { it.id }) { customer ->
                                 CustomerListItem(
                                     customer = customer,
-                                    onEdit = { onEditCustomer(customer) },
-                                    onDelete = { viewModel.deleteCustomer(customer) }
+                                    onEdit = { 
+                                        Log.d("DRY CLEAN SYSTEM LOG", "点击编辑客户：${customer.name}, ID: ${customer.id}")
+                                        onEditCustomer(customer) 
+                                    },
+                                    onDelete = { 
+                                        Log.d("DRY CLEAN SYSTEM LOG", "点击删除客户：${customer.name}, ID: ${customer.id}")
+                                        viewModel.deleteCustomer(customer) 
+                                    },
+                                    onClick = { 
+                                        Log.d("DRY CLEAN SYSTEM LOG", "点击查看客户详情：${customer.name}, ID: ${customer.id}")
+                                        onCustomerClick(customer) 
+                                    }
                                 )
                             }
                         }
@@ -118,14 +130,16 @@ fun CustomerListScreen(
 fun CustomerListItem(
     customer: Customer,
     onEdit: () -> Unit,
-    onDelete: () -> Unit
+    onDelete: () -> Unit,
+    onClick: () -> Unit
 ) {
     var showDeleteDialog by remember { mutableStateOf(false) }
-    
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 4.dp),
+            .padding(horizontal = 16.dp, vertical = 4.dp)
+            .clickable(onClick = onClick),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Row(

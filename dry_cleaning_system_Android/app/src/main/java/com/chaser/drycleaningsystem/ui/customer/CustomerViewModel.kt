@@ -1,5 +1,6 @@
 package com.chaser.drycleaningsystem.ui.customer
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.chaser.drycleaningsystem.data.entity.Customer
@@ -11,11 +12,16 @@ import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 
 /**
  * 客户 ViewModel
  */
-class CustomerViewModel(private val repository: CustomerRepository) : ViewModel() {
+class CustomerViewModel(
+    private val repository: CustomerRepository,
+    private val orderRepository: com.chaser.drycleaningsystem.data.repository.OrderRepository,
+    private val rechargeRecordRepository: com.chaser.drycleaningsystem.data.repository.RechargeRecordRepository
+) : ViewModel() {
     
     private val _searchQuery = MutableStateFlow("")
     val searchQuery: StateFlow<String> = _searchQuery
@@ -98,7 +104,37 @@ class CustomerViewModel(private val repository: CustomerRepository) : ViewModel(
             }
         }
     }
+
+    // 获取客户详情数据
+    suspend fun getCustomerDetail(customerId: Long): CustomerDetailData? {
+        Log.d("DRY CLEAN SYSTEM LOG", "getCustomerDetail 开始，customerId: $customerId")
+        return try {
+            val customer = repository.getCustomerById(customerId)
+            Log.d("DRY CLEAN SYSTEM LOG", "获取客户信息：${customer != null}, 姓名：${customer?.name}")
+            if (customer == null) return null
+            
+            val orders = orderRepository.getOrdersByCustomerId(customerId).first()
+            Log.d("DRY CLEAN SYSTEM LOG", "获取订单列表：${orders.size} 条")
+            
+            val rechargeRecords = rechargeRecordRepository.getRechargeRecordsByCustomerId(customerId).first()
+            Log.d("DRY CLEAN SYSTEM LOG", "获取充值记录：${rechargeRecords.size} 条")
+            
+            CustomerDetailData(customer, orders, rechargeRecords)
+        } catch (e: Exception) {
+            Log.e("DRY CLEAN SYSTEM LOG", "获取客户详情失败", e)
+            null
+        }
+    }
 }
+
+/**
+ * 客户详情数据
+ */
+data class CustomerDetailData(
+    val customer: Customer,
+    val orders: List<com.chaser.drycleaningsystem.data.entity.Order>,
+    val rechargeRecords: List<com.chaser.drycleaningsystem.data.entity.RechargeRecord>
+)
 
 /**
  * 客户 UI 状态

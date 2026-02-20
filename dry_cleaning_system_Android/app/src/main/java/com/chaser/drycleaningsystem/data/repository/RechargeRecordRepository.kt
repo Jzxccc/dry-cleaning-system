@@ -16,7 +16,7 @@ class RechargeRecordRepository(private val rechargeRecordDao: RechargeRecordDao)
     fun getRechargeRecordsByCustomerId(customerId: Long): Flow<List<RechargeRecord>> {
         return rechargeRecordDao.getRechargeRecordsByCustomerId(customerId)
     }
-    
+
     suspend fun insert(record: RechargeRecord): Long {
         return rechargeRecordDao.insert(record)
     }

@@ -36,7 +36,9 @@ fun NewOrderScreen(
             override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
                 @Suppress("UNCHECKED_CAST")
                 return CustomerViewModel(
-                    DataInjection.getCustomerRepository(context)
+                    repository = DataInjection.getCustomerRepository(context),
+                    orderRepository = DataInjection.getOrderRepository(context),
+                    rechargeRecordRepository = DataInjection.getRechargeRecordRepository(context)
                 ) as T
             }
         }

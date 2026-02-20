@@ -8,6 +8,9 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -229,12 +232,14 @@ fun DashboardScreen(
         }
     }
 }
-
 /**
  * 现代化顶部栏
  */
 @Composable
 fun ModernTopAppBar(selectedDate: Date) {
+    // 获取状态栏高度
+    val statusBarsPadding = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
+    
     Surface(
         modifier = Modifier.fillMaxWidth(),
         color = MaterialTheme.colorScheme.surface,
@@ -243,16 +248,16 @@ fun ModernTopAppBar(selectedDate: Date) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(20.dp),
+                .padding(
+                    start = 20.dp,
+                    top = statusBarsPadding + 16.dp, // 状态栏 + 额外间距
+                    end = 20.dp,
+                    bottom = 16.dp
+                ),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             Text(
-                text = "欢迎回来",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Text(
-                text = "干洗店管理系统",
+                text = "干洗店管理系统，欢迎回来",
                 style = MaterialTheme.typography.headlineMedium,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onSurface

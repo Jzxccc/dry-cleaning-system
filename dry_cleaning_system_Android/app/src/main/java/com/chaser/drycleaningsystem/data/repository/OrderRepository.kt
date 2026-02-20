@@ -18,7 +18,11 @@ class OrderRepository(private val orderDao: OrderDao) {
     fun searchOrdersByOrderNo(keyword: String): Flow<List<Order>> {
         return orderDao.searchOrdersByOrderNo(keyword)
     }
-    
+
+    fun searchOrdersByCustomer(keyword: String): Flow<List<Order>> {
+        return orderDao.searchOrdersByCustomer(keyword)
+    }
+
     fun getOrdersByStatus(status: String): Flow<List<Order>> {
         return orderDao.getOrdersByStatus(status)
     }

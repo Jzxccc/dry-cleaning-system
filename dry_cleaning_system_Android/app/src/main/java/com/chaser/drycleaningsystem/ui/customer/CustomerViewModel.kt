@@ -54,14 +54,15 @@ class CustomerViewModel(private val repository: CustomerRepository) : ViewModel(
         _searchQuery.value = query
     }
     
-    fun addCustomer(name: String, phone: String?, wechat: String?, balance: Double) {
+    fun addCustomer(name: String, phone: String?, wechat: String?, balance: Double, note: String?) {
         viewModelScope.launch {
             try {
                 val customer = Customer(
                     name = name,
                     phone = phone,
                     wechat = wechat,
-                    balance = balance
+                    balance = balance,
+                    note = note
                 )
                 repository.insert(customer)
             } catch (e: Exception) {
@@ -69,8 +70,8 @@ class CustomerViewModel(private val repository: CustomerRepository) : ViewModel(
             }
         }
     }
-    
-    fun updateCustomer(id: Long, name: String, phone: String?, wechat: String?, balance: Double) {
+
+    fun updateCustomer(id: Long, name: String, phone: String?, wechat: String?, balance: Double, note: String?) {
         viewModelScope.launch {
             try {
                 val customer = Customer(
@@ -78,7 +79,8 @@ class CustomerViewModel(private val repository: CustomerRepository) : ViewModel(
                     name = name,
                     phone = phone,
                     wechat = wechat,
-                    balance = balance
+                    balance = balance,
+                    note = note
                 )
                 repository.update(customer)
             } catch (e: Exception) {

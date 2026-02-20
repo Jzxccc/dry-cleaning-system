@@ -1,0 +1,488 @@
+package com.chaser.drycleaningsystem.ui.order
+
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import com.chaser.drycleaningsystem.data.entity.Clothes
+import com.chaser.drycleaningsystem.data.entity.Order
+import java.text.SimpleDateFormat
+import java.util.*
+
+/**
+ * 订单详情页面
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun OrderDetailScreen(
+    viewModel: OrderViewModel,
+    orderId: Long,
+    customerName: String,
+    customerPhone: String?,
+    onNavigateBack: () -> Unit
+) {
+    // 获取订单详情
+    val orderDetail = remember { viewModel.getOrderDetail(orderId) }
+    val order = orderDetail?.order
+    val clothesList = orderDetail?.clothesList ?: emptyList()
+    
+    // 观察当前订单状态变化
+    val currentOrder by viewModel.currentOrder.collectAsState(initial = order)
+    val displayOrder = currentOrder ?: order ?: return
+    
+    var showStatusDialog by remember { mutableStateOf(false) }
+    var showDeleteDialog by remember { mutableStateOf(false) }
+    var showDeleteSuccessDialog by remember { mutableStateOf(false) }
+
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("订单详情") },
+                navigationIcon = {
+                    IconButton(onClick = onNavigateBack) {
+                        Icon(Icons.Default.ArrowBack, contentDescription = "返回")
+                    }
+                },
+                actions = {
+                    // 删除按钮
+                    IconButton(onClick = { showDeleteDialog = true }) {
+                        Icon(
+                            imageVector = Icons.Default.Delete,
+                            contentDescription = "删除订单",
+                            tint = MaterialTheme.colorScheme.error
+                        )
+                    }
+                    // 变更状态按钮
+                    IconButton(onClick = { showStatusDialog = true }) {
+                        Icon(
+                            imageVector = Icons.Default.Refresh,
+                            contentDescription = "变更状态"
+                        )
+                    }
+                }
+            )
+        }
+    ) { paddingValues ->
+        LazyColumn(
+            modifier = Modifier
+                .padding(paddingValues)
+                .fillMaxSize()
+                .padding(16.dp)
+        ) {
+            item {
+                OrderInfoCard(
+                    order = displayOrder,
+                    customerName = customerName,
+                    customerPhone = customerPhone
+                )
+            }
+
+            item {
+                Text(
+                    text = "衣物明细",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(vertical = 8.dp)
+                )
+            }
+
+            if (clothesList.isEmpty()) {
+                item {
+                    Text(
+                        text = "暂无衣物",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            } else {
+                items(clothesList) { clothes ->
+                    ClothesItem(clothes = clothes)
+                }
+            }
+
+            item {
+                Spacer(modifier = Modifier.height(16.dp))
+                Button(
+                    onClick = { showStatusDialog = true },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("变更订单状态")
+                }
+            }
+            
+            item {
+                Spacer(modifier = Modifier.height(16.dp))
+                OutlinedButton(
+                    onClick = { showDeleteDialog = true },
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = ButtonDefaults.outlinedButtonColors(
+                        contentColor = MaterialTheme.colorScheme.error
+                    )
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Delete,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("删除订单")
+                }
+            }
+        }
+    }
+
+    if (showStatusDialog) {
+        StatusChangeDialog(
+            currentStatus = displayOrder.status,
+            onStatusSelected = { newStatus ->
+                viewModel.updateOrderStatusSync(displayOrder.id, newStatus)
+                showStatusDialog = false
+            },
+            onDismiss = { showStatusDialog = false }
+        )
+    }
+    
+    // 删除确认对话框
+    if (showDeleteDialog) {
+        AlertDialog(
+            onDismissRequest = { showDeleteDialog = false },
+            icon = {
+                Icon(
+                    imageVector = Icons.Default.Warning,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.error
+                )
+            },
+            title = { Text("确认删除") },
+            text = {
+                Column {
+                    Text("确定要删除订单 ${displayOrder.orderNo} 吗？")
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = "删除后无法恢复，订单衣物信息也将被删除。",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    // 如果是储值支付且未完成，显示退款提示
+                    if (displayOrder.payType == "PREPAID" && displayOrder.status != "FINISHED") {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = "💰 订单金额 ¥${String.format("%.2f", displayOrder.totalPrice)} 将退还到客户余额",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        viewModel.deleteOrder(
+                            orderId = displayOrder.id,
+                            onSuccess = {
+                                showDeleteDialog = false
+                                showDeleteSuccessDialog = true
+                            },
+                            onError = { /* 错误处理 */ }
+                        )
+                    },
+                    colors = ButtonDefaults.textButtonColors(
+                        contentColor = MaterialTheme.colorScheme.error
+                    )
+                ) {
+                    Text("删除")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteDialog = false }) {
+                    Text("取消")
+                }
+            }
+        )
+    }
+    
+    // 删除成功提示
+    if (showDeleteSuccessDialog) {
+        AlertDialog(
+            onDismissRequest = { 
+                showDeleteSuccessDialog = false
+                onNavigateBack()
+            },
+            icon = {
+                Icon(
+                    imageVector = Icons.Default.CheckCircle,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary
+                )
+            },
+            title = { Text("删除成功") },
+            text = { Text("订单已成功删除") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showDeleteSuccessDialog = false
+                        onNavigateBack()
+                    }
+                ) {
+                    Text("确定")
+                }
+            }
+        )
+    }
+}
+
+@Composable
+fun OrderInfoCard(
+    order: Order,
+    customerName: String,
+    customerPhone: String?
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(
+                    text = "订单号",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Text(
+                    text = order.orderNo,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(
+                    text = "客户",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Text(
+                    text = customerName,
+                    style = MaterialTheme.typography.titleMedium
+                )
+            }
+
+            if (!customerPhone.isNullOrBlank()) {
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = "电话：$customerPhone",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+
+            HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(
+                    text = "订单状态",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                StatusBadge(status = order.status)
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(
+                    text = "总价",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Text(
+                    text = "¥${String.format("%.2f", order.totalPrice)}",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(
+                    text = "支付方式",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Text(
+                    text = OrderPayTypeText(order.payType),
+                    style = MaterialTheme.typography.titleMedium
+                )
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(
+                    text = "加急",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Text(
+                    text = if (order.urgent == 1) "是" else "否",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = if (order.urgent == 1) Color.Red else MaterialTheme.colorScheme.onSurface
+                )
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Text(
+                text = "创建时间：${formatDateTime(order.createTime)}",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
+}
+
+@Composable
+fun ClothesItem(clothes: Clothes) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = clothes.type,
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold
+                )
+                if (!clothes.damageRemark.isNullOrBlank()) {
+                    Text(
+                        text = "备注：${clothes.damageRemark}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+            Text(
+                text = "¥${String.format("%.2f", clothes.price)}",
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.primary
+            )
+        }
+    }
+}
+
+@Composable
+fun StatusChangeDialog(
+    currentStatus: String,
+    onStatusSelected: (String) -> Unit,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("变更订单状态") },
+        text = {
+            Column {
+                Text(
+                    text = "请选择新的订单状态：",
+                    style = MaterialTheme.typography.bodyMedium
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+                
+                val statusOptions = listOf(
+                    "UNWASHED" to "未洗",
+                    "WASHED" to "已洗",
+                    "FINISHED" to "已取"
+                )
+                
+                statusOptions.forEach { (status, displayName) ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { onStatusSelected(status) }
+                            .padding(vertical = 12.dp, horizontal = 8.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = displayName,
+                            style = MaterialTheme.typography.bodyLarge
+                        )
+                        if (currentStatus == status) {
+                            AssistChip(
+                                onClick = { },
+                                label = { Text("当前") },
+                                colors = AssistChipDefaults.assistChipColors(
+                                    containerColor = MaterialTheme.colorScheme.primaryContainer
+                                )
+                            )
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text("取消")
+            }
+        }
+    )
+}
+
+@Composable
+fun formatDateTime(dateStr: String): String {
+    return try {
+        val date = Date(dateStr.toLong())
+        val sdf = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
+        sdf.format(date)
+    } catch (e: Exception) {
+        dateStr
+    }
+}

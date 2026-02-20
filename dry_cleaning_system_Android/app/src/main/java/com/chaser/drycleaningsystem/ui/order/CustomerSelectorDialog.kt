@@ -1,5 +1,6 @@
 package com.chaser.drycleaningsystem.ui.order
 
+import android.content.Context
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -8,9 +9,11 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.chaser.drycleaningsystem.data.DataInjection
 import com.chaser.drycleaningsystem.data.entity.Customer
 import com.chaser.drycleaningsystem.ui.customer.CustomerUiState
 import com.chaser.drycleaningsystem.ui.customer.CustomerViewModel
@@ -21,12 +24,12 @@ import com.chaser.drycleaningsystem.ui.customer.CustomerViewModel
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CustomerSelectorDialog(
-    viewModel: CustomerViewModel = viewModel(),
+    viewModel: CustomerViewModel,
     onCustomerSelected: (Customer) -> Unit,
     onDismiss: () -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    
+
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("选择客户") },

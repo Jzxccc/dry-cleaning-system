@@ -1,8 +1,12 @@
 package com.chaser.drycleaningsystem.ui.statistics
 
+import android.app.DatePickerDialog
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.CalendarToday
@@ -10,10 +14,13 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.chaser.drycleaningsystem.data.entity.Order
+import com.chaser.drycleaningsystem.ui.order.OrderPayTypeText
+import com.chaser.drycleaningsystem.ui.order.StatusBadge
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -319,18 +326,10 @@ fun OrderSummaryItem(order: Order) {
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Text(
-                    text = "支付方式：${order.payType}",
+                    text = "支付方式：${OrderPayTypeText(order.payType)}",
                     style = MaterialTheme.typography.bodySmall
                 )
-                Text(
-                    text = "状态：${order.status}",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = when (order.status) {
-                        "已完成" -> MaterialTheme.colorScheme.primary
-                        "待取件" -> MaterialTheme.colorScheme.secondary
-                        else -> MaterialTheme.colorScheme.onSurfaceVariant
-                    }
-                )
+                StatusBadge(status = order.status)
             }
             Spacer(modifier = Modifier.height(4.dp))
             Text(
@@ -352,15 +351,42 @@ fun DatePickerDialog(
     onDateSelected: (Long) -> Unit,
     onDismiss: () -> Unit
 ) {
-    // 使用简单的日期选择
-    var year by remember {
-        mutableIntStateOf(Calendar.getInstance().get(Calendar.YEAR))
-    }
-    var month by remember {
-        mutableIntStateOf(Calendar.getInstance().get(Calendar.MONTH))
-    }
-    var day by remember {
-        mutableIntStateOf(Calendar.getInstance().get(Calendar.DAY_OF_MONTH))
+    val calendar = remember { Calendar.getInstance() }
+    calendar.time = Date(selectedDate)
+    
+    val currentYear = Calendar.getInstance().get(Calendar.YEAR)
+    val startYear = 2020 // 起始年份
+    val years = (startYear..currentYear).toList()
+    
+    var selectedYear by remember { mutableIntStateOf(calendar.get(Calendar.YEAR)) }
+    var selectedMonth by remember { mutableIntStateOf(calendar.get(Calendar.MONTH)) }
+    var selectedDay by remember { mutableIntStateOf(calendar.get(Calendar.DAY_OF_MONTH)) }
+    
+    val context = LocalContext.current
+    var showAndroidDatePicker by remember { mutableStateOf(false) }
+    
+    // 计算已选择年份的索引，用于初始滚动位置
+    val selectedYearIndex = remember { years.indexOf(selectedYear).coerceAtLeast(0) }
+    val listState = rememberLazyListState(initialFirstVisibleItemIndex = selectedYearIndex.coerceAtLeast(1) - 1)
+
+    if (reportType == ReportType.DAILY && showAndroidDatePicker) {
+        DatePickerDialog(
+            context,
+            { _, year, month, dayOfMonth ->
+                val cal = Calendar.getInstance()
+                cal.set(year, month, dayOfMonth)
+                onDateSelected(cal.timeInMillis)
+            },
+            selectedYear,
+            selectedMonth,
+            selectedDay
+        ).apply {
+            setOnDismissListener { onDismiss() }
+            show()
+        }
+        // 立即调用 onDismiss，因为 Android 原生对话框会处理取消
+        onDismiss()
+        return
     }
 
     AlertDialog(
@@ -374,68 +400,106 @@ fun DatePickerDialog(
             )
         },
         text = {
-            Column {
-                if (reportType == ReportType.MONTHLY) {
-                    // 年月选择器
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalAlignment = Alignment.CenterVertically
+            if (reportType == ReportType.DAILY) {
+                // 日报 - 触发原生 DatePicker
+                LaunchedEffect(Unit) {
+                    showAndroidDatePicker = true
+                }
+            } else {
+                // 月报 - 年月选择器
+                Column {
+                    Text("选择年份：")
+                    Spacer(modifier = Modifier.height(8.dp))
+                    // 年份选择 - 滚轮样式，可滚动到当前年份
+                    androidx.compose.foundation.lazy.LazyColumn(
+                        modifier = Modifier
+                            .width(120.dp)
+                            .height(150.dp),
+                        horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally,
+                        state = listState
                     ) {
-                        // 年滚轮
-                        Text("年:")
-                        androidx.compose.foundation.lazy.LazyColumn(
-                            modifier = Modifier
-                                .width(80.dp)
-                                .height(150.dp)
+                        items(years) { year ->
+                            val isSelected = year == selectedYear
+                            Text(
+                                text = "$year 年",
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 16.dp, horizontal = 8.dp)
+                                    .clickable { selectedYear = year }
+                                    .then(
+                                        if (isSelected) {
+                                            Modifier.padding(4.dp)
+                                        } else {
+                                            Modifier
+                                        }
+                                    ),
+                                color = if (isSelected) {
+                                    MaterialTheme.colorScheme.primary
+                                } else {
+                                    MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                                },
+                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                                style = if (isSelected) {
+                                    MaterialTheme.typography.titleMedium
+                                } else {
+                                    MaterialTheme.typography.bodyLarge
+                                }
+                            )
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text("提示：上下滑动选择年份")
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text("选择月份：")
+                    Spacer(modifier = Modifier.height(8.dp))
+                    // 月份选择 - 两行显示
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        // 第一行：1-6 月
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
                         ) {
-                            items(10) { index ->
-                                val y = Calendar.getInstance().get(Calendar.YEAR) - 5 + index
-                                Text(
-                                    text = "$y 年",
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(8.dp),
-                                    color = if (y == year) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+                            (1..6).forEach { month ->
+                                FilterChip(
+                                    selected = month - 1 == selectedMonth,
+                                    onClick = { selectedMonth = month - 1 },
+                                    label = { Text("$month 月") },
+                                    modifier = Modifier.weight(1f)
                                 )
                             }
                         }
-
-                        // 月滚轮
-                        Text("月:")
-                        androidx.compose.foundation.lazy.LazyColumn(
-                            modifier = Modifier
-                                .width(60.dp)
-                                .height(150.dp)
+                        // 第二行：7-12 月
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
                         ) {
-                            items(12) { index ->
-                                val m = index + 1
-                                Text(
-                                    text = "$m 月",
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(8.dp),
-                                    color = if (m - 1 == month) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+                            (7..12).forEach { month ->
+                                FilterChip(
+                                    selected = month - 1 == selectedMonth,
+                                    onClick = { selectedMonth = month - 1 },
+                                    label = { Text("$month 月") },
+                                    modifier = Modifier.weight(1f)
                                 )
                             }
                         }
                     }
-                } else {
-                    // 简单日期输入提示
-                    Text("请选择日期：${year}-${month + 1}-$day")
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text("使用系统日期选择器...")
                 }
             }
         },
         confirmButton = {
-            TextButton(
-                onClick = {
-                    val calendar = Calendar.getInstance()
-                    calendar.set(year, month, day)
-                    onDateSelected(calendar.timeInMillis)
+            if (reportType == ReportType.MONTHLY) {
+                TextButton(
+                    onClick = {
+                        val cal = Calendar.getInstance()
+                        cal.set(selectedYear, selectedMonth, 1)
+                        onDateSelected(cal.timeInMillis)
+                    }
+                ) {
+                    Text("确定")
                 }
-            ) {
-                Text("确定")
             }
         },
         dismissButton = {
@@ -446,7 +510,11 @@ fun DatePickerDialog(
     )
 }
 
-private fun formatDateTime(timestamp: String): String {
+/**
+ * 格式化时间
+ */
+@Composable
+fun formatDateTime(timestamp: String): String {
     return try {
         val date = Date(timestamp.toLong())
         val sdf = SimpleDateFormat("MM-dd HH:mm", Locale.getDefault())

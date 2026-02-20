@@ -1,5 +1,6 @@
 package com.chaser.drycleaningsystem.ui.order
 
+import android.content.Context
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -11,9 +12,13 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.chaser.drycleaningsystem.data.DataInjection
 import com.chaser.drycleaningsystem.data.entity.Customer
+import com.chaser.drycleaningsystem.ui.customer.CustomerViewModel
 
 /**
  * 新建订单页面
@@ -21,15 +26,39 @@ import com.chaser.drycleaningsystem.data.entity.Customer
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun NewOrderScreen(
+    viewModel: OrderViewModel,
     onNavigateBack: () -> Unit,
     onCreateOrder: (customerId: Long, payType: String, urgent: Boolean, clothesList: List<ClothesItem>) -> Unit
 ) {
+    val context = LocalContext.current
+    val customerViewModel: CustomerViewModel = viewModel(
+        factory = object : androidx.lifecycle.ViewModelProvider.Factory {
+            override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
+                @Suppress("UNCHECKED_CAST")
+                return CustomerViewModel(
+                    DataInjection.getCustomerRepository(context)
+                ) as T
+            }
+        }
+    )
+    
     var selectedCustomer by remember { mutableStateOf<Customer?>(null) }
     var payType by remember { mutableStateOf("CASH") }
     var isUrgent by remember { mutableStateOf(false) }
     var clothesList by remember { mutableStateOf<List<ClothesItem>>(emptyList()) }
     var showCustomerSelector by remember { mutableStateOf(false) }
     var showAddClothesDialog by remember { mutableStateOf(false) }
+    
+    // 当选择客户后，如果客户有余额，自动设置为储值支付
+    LaunchedEffect(selectedCustomer) {
+        selectedCustomer?.let { customer ->
+            if (customer.balance > 0) {
+                payType = "PREPAID"
+            } else {
+                payType = "CASH"
+            }
+        }
+    }
     
     Scaffold(
         topBar = {
@@ -188,7 +217,28 @@ fun NewOrderScreen(
                             style = MaterialTheme.typography.titleMedium
                         )
                         Spacer(modifier = Modifier.height(8.dp))
-                        
+
+                        // 显示客户余额提示
+                        if (selectedCustomer != null) {
+                            Text(
+                                text = "客户余额：¥${String.format("%.2f", selectedCustomer!!.balance)}",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = if (selectedCustomer!!.balance > 0) {
+                                    MaterialTheme.colorScheme.primary
+                                } else {
+                                    MaterialTheme.colorScheme.onSurfaceVariant
+                                }
+                            )
+                            if (selectedCustomer!!.balance > 0 && payType == "PREPAID") {
+                                Text(
+                                    text = "✓ 已自动选择储值支付",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.secondary
+                                )
+                            }
+                            Spacer(modifier = Modifier.height(8.dp))
+                        }
+
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -270,6 +320,7 @@ fun NewOrderScreen(
     // 客户选择对话框
     if (showCustomerSelector) {
         CustomerSelectorDialog(
+            viewModel = customerViewModel,
             onCustomerSelected = { customer ->
                 selectedCustomer = customer
                 showCustomerSelector = false

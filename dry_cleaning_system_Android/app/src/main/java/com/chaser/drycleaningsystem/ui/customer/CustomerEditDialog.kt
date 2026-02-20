@@ -13,15 +13,16 @@ import com.chaser.drycleaningsystem.data.entity.Customer
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CustomerEditDialog(
-    customer: Customer? = null,
     onDismiss: () -> Unit,
-    onConfirm: (name: String, phone: String?, wechat: String?, balance: Double) -> Unit
+    onConfirm: (name: String, phone: String?, wechat: String?, balance: Double, note: String?) -> Unit,
+    customer: Customer? = null
 ) {
     var name by remember { mutableStateOf(customer?.name ?: "") }
     var phone by remember { mutableStateOf(customer?.phone ?: "") }
     var wechat by remember { mutableStateOf(customer?.wechat ?: "") }
     var balance by remember { mutableStateOf(customer?.balance?.toString() ?: "0") }
-    
+    var note by remember { mutableStateOf(customer?.note ?: "") }
+
     AlertDialog(
         onDismissRequest = onDismiss,
         title = {
@@ -35,32 +36,42 @@ fun CustomerEditDialog(
                     label = { Text("姓名 *") },
                     modifier = Modifier.fillMaxWidth()
                 )
-                
+
                 Spacer(modifier = Modifier.height(8.dp))
-                
+
                 OutlinedTextField(
                     value = phone,
                     onValueChange = { phone = it },
                     label = { Text("手机号") },
                     modifier = Modifier.fillMaxWidth()
                 )
-                
+
                 Spacer(modifier = Modifier.height(8.dp))
-                
+
                 OutlinedTextField(
                     value = wechat,
                     onValueChange = { wechat = it },
                     label = { Text("微信") },
                     modifier = Modifier.fillMaxWidth()
                 )
-                
+
                 Spacer(modifier = Modifier.height(8.dp))
-                
+
                 OutlinedTextField(
                     value = balance,
                     onValueChange = { balance = it },
                     label = { Text("余额") },
                     modifier = Modifier.fillMaxWidth()
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                OutlinedTextField(
+                    value = note,
+                    onValueChange = { note = it },
+                    label = { Text("备注") },
+                    modifier = Modifier.fillMaxWidth(),
+                    maxLines = 3
                 )
             }
         },
@@ -68,7 +79,7 @@ fun CustomerEditDialog(
             TextButton(
                 onClick = {
                     val balanceValue = balance.toDoubleOrNull() ?: 0.0
-                    onConfirm(name, phone.ifBlank { null }, wechat.ifBlank { null }, balanceValue)
+                    onConfirm(name, phone.ifBlank { null }, wechat.ifBlank { null }, balanceValue, note.ifBlank { null })
                 },
                 enabled = name.isNotBlank()
             ) {

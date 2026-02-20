@@ -12,11 +12,13 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -42,7 +44,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.chaser.drycleaningsystem.data.entity.Customer
 import com.chaser.drycleaningsystem.data.entity.Order
+import com.chaser.drycleaningsystem.ui.customer.CustomerViewModel
 
 /**
  * 订单列表页面
@@ -51,13 +55,22 @@ import com.chaser.drycleaningsystem.data.entity.Order
 @Composable
 fun OrderListScreen(
     viewModel: OrderViewModel = viewModel(),
+    customerViewModel: CustomerViewModel = viewModel(),
     onCreateOrder: () -> Unit,
-    onOrderClick: (Order) -> Unit
+    onOrderClick: (Long) -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val statusFilter by viewModel.orderStatusFilter.collectAsState()
-    var searchQuery by remember { mutableStateOf("") }
+    val searchQuery by viewModel.searchQuery.collectAsState()
+    val searchResults by viewModel.searchResults.collectAsState()
+    val searchType by viewModel.searchType.collectAsState()
     
+    // 获取所有客户用于映射
+    val allCustomers by customerViewModel.allCustomers.collectAsState(initial = emptyList())
+    val customerMap = remember(allCustomers) { 
+        allCustomers.associateBy { it.id } 
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -76,18 +89,57 @@ fun OrderListScreen(
                 .fillMaxSize()
         ) {
             // 搜索框
-            OutlinedTextField(
-                value = searchQuery,
-                onValueChange = { searchQuery = it },
+            Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(16.dp),
-                placeholder = { Text("搜索订单号") },
-                leadingIcon = {
-                    Icon(Icons.Default.Search, contentDescription = null)
-                },
-                singleLine = true
-            )
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // 搜索类型选择按钮
+                Row(
+                    modifier = Modifier
+                        .weight(1f),
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    FilterChip(
+                        selected = searchType == "order_no",
+                        onClick = { viewModel.setSearchType("order_no") },
+                        label = { Text("订单号") }
+                    )
+                    FilterChip(
+                        selected = searchType == "customer",
+                        onClick = { viewModel.setSearchType("customer") },
+                        label = { Text("客户") }
+                    )
+                }
+
+                // 搜索输入框
+                OutlinedTextField(
+                    value = searchQuery,
+                    onValueChange = { viewModel.search(it) },
+                    modifier = Modifier.weight(2f),
+                    placeholder = {
+                        Text(
+                            when (searchType) {
+                                "customer" -> "搜索客户名称或手机号"
+                                else -> "搜索订单号"
+                            }
+                        )
+                    },
+                    leadingIcon = {
+                        Icon(Icons.Default.Search, contentDescription = null)
+                    },
+                    singleLine = true
+                )
+
+                // 清除按钮
+                if (searchQuery.isNotEmpty()) {
+                    IconButton(onClick = { viewModel.search("") }) {
+                        Icon(Icons.Default.Clear, contentDescription = "清除")
+                    }
+                }
+            }
             
             // 状态筛选
             StatusFilterRow(
@@ -106,27 +158,38 @@ fun OrderListScreen(
                     }
                 }
                 is OrderUiState.Success -> {
-                    val orders = state.orders.filter { order ->
-                        val matchesSearch = searchQuery.isBlank() ||
-                                order.orderNo.contains(searchQuery, ignoreCase = true)
-                        val matchesStatus = statusFilter == null || order.status == statusFilter
-                        
-                        matchesSearch && matchesStatus
+                    // 使用搜索结果或全部订单
+                    val orders = if (searchQuery.isNotBlank() && searchResults.isNotEmpty()) {
+                        // 有搜索结果时使用搜索结果
+                        searchResults.filter { order ->
+                            statusFilter == null || order.status == statusFilter
+                        }
+                    } else {
+                        // 否则使用全部订单并应用筛选
+                        state.orders.filter { order ->
+                            val matchesStatus = statusFilter == null || order.status == statusFilter
+                            matchesStatus
+                        }
                     }
-                    
+
                     if (orders.isEmpty()) {
                         Box(
                             modifier = Modifier.fillMaxSize(),
                             contentAlignment = Alignment.Center
                         ) {
-                            Text("暂无订单")
+                            Text(
+                                if (searchQuery.isNotBlank()) "未找到匹配的订单" else "暂无订单"
+                            )
                         }
                     } else {
                         LazyColumn {
                             items(orders, key = { it.id }) { order ->
+                                val customer = customerMap[order.customerId]
                                 OrderListItem(
                                     order = order,
-                                    onClick = { onOrderClick(order) }
+                                    customerName = customer?.name ?: "",
+                                    customerPhone = customer?.phone ?: "",
+                                    onClick = { onOrderClick(order.id) }
                                 )
                             }
                         }
@@ -188,6 +251,8 @@ fun StatusChip(
 @Composable
 fun OrderListItem(
     order: Order,
+    customerName: String = "",
+    customerPhone: String = "",
     onClick: () -> Unit
 ) {
     Card(
@@ -211,23 +276,40 @@ fun OrderListItem(
                     fontWeight = FontWeight.Bold,
                     style = MaterialTheme.typography.titleMedium
                 )
-                
+
                 StatusBadge(status = order.status)
             }
-            
+
             Spacer(modifier = Modifier.height(8.dp))
-            
+
+            // 客户信息
+            if (customerName.isNotEmpty()) {
+                Text(
+                    text = "客户：$customerName",
+                    style = MaterialTheme.typography.bodyMedium
+                )
+                if (customerPhone.isNotEmpty()) {
+                    Text(
+                        text = "电话：$customerPhone",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(4.dp))
+
             Text(
                 text = "总价：¥${String.format("%.2f", order.totalPrice)}",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.primary
             )
-            
+
             Text(
-                text = "支付方式：${getPayTypeText(order.payType)}",
+                text = "支付方式：${OrderPayTypeText(order.payType)}",
                 style = MaterialTheme.typography.bodySmall
             )
-            
+
             if (order.urgent == 1) {
                 Text(
                     text = "🔥 加急",
@@ -236,43 +318,5 @@ fun OrderListItem(
                 )
             }
         }
-    }
-}
-
-/**
- * 状态徽章
- */
-@Composable
-fun StatusBadge(status: String) {
-    val (color, text) = when (status) {
-        "UNWASHED" -> Color(0xFFFF9800) to "未洗"
-        "WASHED" -> Color(0xFF2196F3) to "已洗"
-        "FINISHED" -> Color(0xFF4CAF50) to "已取"
-        else -> Color.Gray to status
-    }
-    
-    Box(
-        modifier = Modifier
-            .background(color, shape = RoundedCornerShape(4.dp))
-            .padding(horizontal = 8.dp, vertical = 4.dp)
-    ) {
-        Text(
-            text = text,
-            color = Color.White,
-            style = MaterialTheme.typography.labelSmall
-        )
-    }
-}
-
-/**
- * 支付方式文本
- */
-@Composable
-fun getPayTypeText(payType: String): String {
-    return when (payType) {
-        "CASH" -> "现金"
-        "PREPAID" -> "储值"
-        "UNPAID" -> "未支付"
-        else -> payType
     }
 }

@@ -69,7 +69,8 @@ class StatisticsViewModel(
                 }
 
                 val totalIncome = cashIncome + rechargeIncome
-                val pendingOrders = orders.count { it.status == "待取件" }
+                // 统计未完成订单（未洗 + 已洗，即非已取状态）
+                val pendingOrders = orders.count { it.status != "FINISHED" }
 
                 _uiState.value = StatisticsUiState.Success(
                     cashIncome = cashIncome,

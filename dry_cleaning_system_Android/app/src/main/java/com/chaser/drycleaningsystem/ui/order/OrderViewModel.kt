@@ -11,7 +11,9 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -23,26 +25,62 @@ class OrderViewModel(
     private val customerRepository: CustomerRepository,
     private val clothesRepository: ClothesRepository
 ) : ViewModel() {
-    
+
     private val _searchQuery = MutableStateFlow("")
     val searchQuery: StateFlow<String> = _searchQuery
-    
+
+    // 搜索类型：order_no(订单号), customer(客户)
+    private val _searchType = MutableStateFlow("order_no")
+    val searchType: StateFlow<String> = _searchType
+
+    // 搜索结果
+    private val _searchResults = MutableStateFlow<List<Order>>(emptyList())
+    val searchResults: StateFlow<List<Order>> = _searchResults
+
     val allOrders: Flow<List<Order>> = orderRepository.allOrders
-    
+
     private val _uiState = MutableStateFlow<OrderUiState>(OrderUiState.Loading)
     val uiState: StateFlow<OrderUiState> = _uiState
-    
+
     private val _orderStatusFilter = MutableStateFlow<String?>(null)
     val orderStatusFilter: StateFlow<String?> = _orderStatusFilter
-    
+
+    // 当前选中的订单（用于详情页面）
+    private val _currentOrder = MutableStateFlow<Order?>(null)
+    val currentOrder: StateFlow<Order?> = _currentOrder
+
     init {
         observeOrders()
+        observeSearch()
     }
-    
+
     private fun observeOrders() {
         viewModelScope.launch {
             allOrders.collect { orders ->
                 _uiState.value = OrderUiState.Success(orders)
+                // 更新当前订单的状态
+                _currentOrder.value?.let { currentOrder ->
+                    val updatedOrder = orders.find { it.id == currentOrder.id }
+                    if (updatedOrder != null && updatedOrder.status != currentOrder.status) {
+                        _currentOrder.value = updatedOrder
+                    }
+                }
+            }
+        }
+    }
+
+    private fun observeSearch() {
+        viewModelScope.launch {
+            searchQuery.collect { query ->
+                if (query.isBlank()) {
+                    _searchResults.value = emptyList()
+                } else {
+                    val results = when (searchType.value) {
+                        "customer" -> orderRepository.searchOrdersByCustomer(query).first()
+                        else -> orderRepository.searchOrdersByOrderNo(query).first()
+                    }
+                    _searchResults.value = results
+                }
             }
         }
     }
@@ -50,7 +88,15 @@ class OrderViewModel(
     fun search(query: String) {
         _searchQuery.value = query
     }
-    
+
+    fun setSearchType(type: String) {
+        _searchType.value = type
+        // 重新触发搜索
+        if (_searchQuery.value.isNotBlank()) {
+            search(_searchQuery.value)
+        }
+    }
+
     fun filterByStatus(status: String?) {
         _orderStatusFilter.value = status
     }
@@ -67,10 +113,10 @@ class OrderViewModel(
                 val dateFormat = SimpleDateFormat("yyyyMMdd", Locale.getDefault())
                 val dateStr = dateFormat.format(Date())
                 val orderNo = "ORD-$dateStr-${System.currentTimeMillis() % 10000}"
-                
+
                 // 计算总价
                 val totalPrice = clothesList.sumOf { it.price }
-                
+
                 // 创建订单
                 val order = Order(
                     orderNo = orderNo,
@@ -86,10 +132,19 @@ class OrderViewModel(
 
                 val orderId = orderRepository.insert(order)
 
-                // 添加衣物
+                // 如果是储值支付，扣减客户余额
+                if (payType == "PREPAID") {
+                    val customer = customerRepository.getCustomerById(customerId)
+                    customer?.let {
+                        val newBalance = it.balance - totalPrice
+                        customerRepository.update(it.copy(balance = newBalance))
+                    }
+                }
+
+                // 添加衣物（使用 orderNo 而不是 orderId）
                 clothesList.forEach { clothesItem ->
                     val clothes = Clothes(
-                        orderId = orderId.toString(),
+                        orderId = orderNo,
                         type = clothesItem.type,
                         price = clothesItem.price,
                         damageRemark = null,
@@ -117,7 +172,7 @@ class OrderViewModel(
             }
         }
     }
-    
+
     fun deleteOrder(order: Order) {
         viewModelScope.launch {
             try {
@@ -127,7 +182,93 @@ class OrderViewModel(
             }
         }
     }
+
+    // 设置当前选中的订单
+    fun setCurrentOrder(order: Order) {
+        _currentOrder.value = order
+    }
+
+    // 获取订单详情（包括衣物列表）
+    fun getOrderDetail(orderId: Long): OrderDetailData? {
+        return try {
+            val order = runBlocking { orderRepository.getOrderById(orderId) }
+            if (order != null) {
+                // 设置当前订单
+                _currentOrder.value = order
+                // 获取衣物列表（使用订单号查询）
+                val clothes = runBlocking { 
+                    clothesRepository.getClothesByOrderId(order.orderNo).first() 
+                }
+                OrderDetailData(order, clothes)
+            } else {
+                null
+            }
+        } catch (e: Exception) {
+            null
+        }
+    }
+
+    // 获取衣物列表（作为 Flow）
+    fun getClothesForOrder(orderNo: String): Flow<List<Clothes>> {
+        return clothesRepository.getClothesByOrderId(orderNo)
+    }
+
+    // 更新订单状态
+    fun updateOrderStatusSync(orderId: Long, newStatus: String) {
+        viewModelScope.launch {
+            try {
+                val order = orderRepository.getOrderById(orderId)
+                order?.let {
+                    orderRepository.update(it.copy(status = newStatus))
+                    // 更新当前订单状态
+                    if (_currentOrder.value?.id == orderId) {
+                        _currentOrder.value = _currentOrder.value?.copy(status = newStatus)
+                    }
+                }
+            } catch (e: Exception) {
+                // Handle error
+            }
+        }
+    }
+
+    // 删除订单
+    fun deleteOrder(orderId: Long, onSuccess: () -> Unit, onError: (String) -> Unit) {
+        viewModelScope.launch {
+            try {
+                val order = orderRepository.getOrderById(orderId)
+                if (order != null) {
+                    // 如果订单是使用储值支付且未完成（非已取状态），退还金额
+                    if (order.payType == "PREPAID" && order.status != "FINISHED") {
+                        val customer = customerRepository.getCustomerById(order.customerId)
+                        customer?.let {
+                            // 退还订单金额到客户余额
+                            val newBalance = it.balance + order.totalPrice
+                            customerRepository.update(it.copy(balance = newBalance))
+                        }
+                    }
+                    
+                    // 先删除衣物
+                    clothesRepository.deleteByOrderId(order.orderNo)
+                    // 再删除订单
+                    orderRepository.delete(order)
+                    onSuccess()
+                } else {
+                    onError("订单不存在")
+                }
+            } catch (e: Exception) {
+                onError("删除失败：${e.message}")
+            }
+        }
+    }
 }
+
+/**
+ * 订单详情数据
+ */
+data class OrderDetailData(
+    val order: Order,
+    val clothesList: List<Clothes>
+)
 
 /**
  * 订单 UI 状态

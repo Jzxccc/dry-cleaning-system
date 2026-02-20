@@ -14,5 +14,6 @@ data class Customer(
     val phone: String?,
     val wechat: String?,
     val balance: Double = 0.0,
-    @ColumnInfo(name = "create_time") val createTime: String = System.currentTimeMillis().toString()
+    @ColumnInfo(name = "create_time") val createTime: String = System.currentTimeMillis().toString(),
+    val note: String? = null
 )

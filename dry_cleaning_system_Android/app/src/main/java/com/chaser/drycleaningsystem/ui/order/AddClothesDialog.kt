@@ -18,9 +18,13 @@ fun AddClothesDialog(
     var selectedType by remember { mutableStateOf(ClothesTypePricing.clothesTypes.first().name) }
     var damageRemark by remember { mutableStateOf("") }
     
-    val selectedPrice = ClothesTypePricing.clothesTypes
+    // 获取基础价格
+    val basePrice = ClothesTypePricing.clothesTypes
         .find { it.name == selectedType }?.price ?: 0.0
     
+    // 可调整的价格
+    var customPrice by remember { mutableStateOf(basePrice.toString()) }
+
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("添加衣物") },
@@ -42,33 +46,46 @@ fun AddClothesDialog(
                             .fillMaxWidth()
                             .menuAnchor()
                     )
-                    
+
                     ExposedDropdownMenu(
                         expanded = expanded,
                         onDismissRequest = { expanded = false }
                     ) {
                         ClothesTypePricing.clothesTypes.forEach { type ->
                             DropdownMenuItem(
-                                text = { Text("${type.name} - ¥${type.price}") },
+                                text = { Text("${type.name} - 基础价¥${type.price}") },
                                 onClick = {
                                     selectedType = type.name
+                                    customPrice = type.price.toString()
                                     expanded = false
                                 }
                             )
                         }
                     }
                 }
-                
+
                 Spacer(modifier = Modifier.height(16.dp))
-                
-                // 价格显示
-                Text(
-                    text = "价格：¥${String.format("%.2f", selectedPrice)}",
-                    style = MaterialTheme.typography.bodyLarge
+
+                // 价格输入（可调整）
+                OutlinedTextField(
+                    value = customPrice,
+                    onValueChange = { customPrice = it },
+                    label = { Text("价格（可调整）") },
+                    modifier = Modifier.fillMaxWidth(),
+                    prefix = { Text("¥") },
+                    singleLine = true
                 )
+
+                Spacer(modifier = Modifier.height(8.dp))
                 
+                Text(
+                    text = "基础价：¥${String.format("%.2f", basePrice)}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+
                 Spacer(modifier = Modifier.height(16.dp))
-                
+
                 // 破损备注
                 OutlinedTextField(
                     value = damageRemark,
@@ -82,7 +99,8 @@ fun AddClothesDialog(
         confirmButton = {
             TextButton(
                 onClick = {
-                    onClothesAdded(selectedType, selectedPrice, damageRemark.ifBlank { null })
+                    val price = customPrice.toDoubleOrNull() ?: basePrice
+                    onClothesAdded(selectedType, price, damageRemark.ifBlank { null })
                 }
             ) {
                 Text("添加")

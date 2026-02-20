@@ -25,6 +25,9 @@ interface OrderDao {
     @Query("SELECT * FROM orders WHERE order_no LIKE '%' || :keyword || '%' ORDER BY create_time DESC")
     fun searchOrdersByOrderNo(keyword: String): Flow<List<Order>>
 
+    @Query("SELECT * FROM orders WHERE customer_id IN (SELECT id FROM customer WHERE name LIKE '%' || :keyword || '%' OR phone LIKE '%' || :keyword || '%') ORDER BY create_time DESC")
+    fun searchOrdersByCustomer(keyword: String): Flow<List<Order>>
+
     @Query("SELECT * FROM orders WHERE status = :status ORDER BY create_time DESC")
     fun getOrdersByStatus(status: String): Flow<List<Order>>
 

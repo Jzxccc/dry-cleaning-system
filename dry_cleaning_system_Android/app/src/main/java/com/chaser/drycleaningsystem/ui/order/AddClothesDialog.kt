@@ -26,7 +26,7 @@ fun AddClothesDialog(
     var customPrice by remember { mutableStateOf(basePrice.toString()) }
 
     AlertDialog(
-        onDismissRequest = onDismiss,
+        onDismissRequest = { }, // 禁用点击空白关闭
         title = { Text("添加衣物") },
         text = {
             Column {

@@ -24,7 +24,7 @@ fun CustomerEditDialog(
     var note by remember { mutableStateOf(customer?.note ?: "") }
 
     AlertDialog(
-        onDismissRequest = onDismiss,
+        onDismissRequest = { }, // 禁用点击空白关闭
         title = {
             Text(if (customer == null) "添加客户" else "编辑客户")
         },

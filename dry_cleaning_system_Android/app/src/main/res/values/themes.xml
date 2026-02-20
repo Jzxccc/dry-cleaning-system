@@ -1,5 +1,30 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <!-- ============ 基础主题 - 用于传统 Android 视图 ============ -->
+    <style name="Theme.DryCleaningSystemAndroid" parent="android:Theme.Material.Light.NoActionBar">
+        <!-- 主色 -->
+        <item name="android:colorPrimary">@color/primary</item>
+        <item name="android:colorPrimaryDark">@color/primary_variant</item>
+        <item name="android:colorAccent">@color/primary</item>
+        
+        <!-- 背景色 -->
+        <item name="android:colorBackground">@color/background</item>
+        
+        <!-- 状态栏颜色 -->
+        <item name="android:statusBarColor">@color/primary</item>
+    </style>
 
-    <style name="Theme.DryCleaningSystemAndroid" parent="android:Theme.Material.Light.NoActionBar" />
+    <!-- ============ 深色模式主题 ============ -->
+    <style name="Theme.DryCleaningSystemAndroid.Dark" parent="android:Theme.Material.NoActionBar">
+        <!-- 主色 -->
+        <item name="android:colorPrimary">@color/primary_dark</item>
+        <item name="android:colorPrimaryDark">@color/primary_variant_dark</item>
+        <item name="android:colorAccent">@color/primary_dark</item>
+        
+        <!-- 背景色 -->
+        <item name="android:colorBackground">@color/dark_background</item>
+        
+        <!-- 状态栏颜色 -->
+        <item name="android:statusBarColor">@color/dark_surface</item>
+    </style>
 </resources>

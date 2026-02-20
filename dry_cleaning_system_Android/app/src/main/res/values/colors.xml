@@ -1,5 +1,66 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <!-- ============ 主色 Primary ============ -->
+    <color name="primary">#2196F3</color>
+    <color name="primary_variant">#1976D2</color>
+    <color name="on_primary">#FFFFFF</color>
+    <color name="primary_container">#D3E3FD</color>
+    <color name="on_primary_container">#0D47A1</color>
+
+    <!-- ============ 辅助色 Secondary ============ -->
+    <color name="secondary">#03DAC6</color>
+    <color name="secondary_variant">#018786</color>
+    <color name="on_secondary">#000000</color>
+    <color name="secondary_container">#B2DFDB</color>
+    <color name="on_secondary_container">#004D40</color>
+
+    <!-- ============ 第三色 Tertiary ============ -->
+    <color name="tertiary">#3700B3</color>
+    <color name="on_tertiary">#FFFFFF</color>
+    <color name="tertiary_container">#EADDFF</color>
+    <color name="on_tertiary_container">#21005D</color>
+
+    <!-- ============ 错误色 Error ============ -->
+    <color name="error">#B00020</color>
+    <color name="error_container">#F2B8B5</color>
+    <color name="on_error">#FFFFFF</color>
+    <color name="on_error_container">#690005</color>
+
+    <!-- ============ 背景色 Background ============ -->
+    <color name="background">#FAFAFA</color>
+    <color name="on_background">#1C1B1F</color>
+    <color name="dark_background">#121212</color>
+    <color name="dark_on_background">#E6E1E5</color>
+
+    <!-- ============ 表面色 Surface ============ -->
+    <color name="surface">#FFFFFF</color>
+    <color name="on_surface">#1C1B1F</color>
+    <color name="surface_variant">#E7E0EC</color>
+    <color name="on_surface_variant">#49454F</color>
+    <color name="dark_surface">#1E1E1E</color>
+    <color name="dark_on_surface">#E6E1E5</color>
+
+    <!-- ============ 轮廓色 Outline ============ -->
+    <color name="outline">#79747E</color>
+    <color name="outline_variant">#CAC4D0</color>
+
+    <!-- ============ 反向颜色 Inverse ============ -->
+    <color name="inverse_surface">#313033</color>
+    <color name="inverse_on_surface">#F4EFF4</color>
+    <color name="inverse_primary">#D0BCFF</color>
+
+    <!-- ============ 阴影和描边 ============ -->
+    <color name="shadow">#000000</color>
+    <color name="scrim">#000000</color>
+    <color name="surface_tint">#6750A4</color>
+
+    <!-- ============ 触摸状态色 ============ -->
+    <color name="state_layer_pressed">#1F000000</color>
+    <color name="state_layer_hovered">#08000000</color>
+    <color name="state_layer_focused">#1F000000</color>
+    <color name="state_layer_dragged">#1F000000</color>
+
+    <!-- ============ 保留原有颜色 (向后兼容) ============ -->
     <color name="purple_200">#FFBB86FC</color>
     <color name="purple_500">#FF6200EE</color>
     <color name="purple_700">#FF3700B3</color>

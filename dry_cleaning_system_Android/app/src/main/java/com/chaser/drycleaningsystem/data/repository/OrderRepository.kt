@@ -8,9 +8,16 @@ import kotlinx.coroutines.flow.Flow
  * 订单数据仓库
  */
 class OrderRepository(private val orderDao: OrderDao) {
-    
+
     val allOrders: Flow<List<Order>> = orderDao.getAllOrders()
-    
+
+    /**
+     * 获取所有订单（非 Flow 版本）
+     */
+    suspend fun getAllOrders(): List<Order> {
+        return orderDao.getAllOrdersList()
+    }
+
     fun getOrdersByCustomerId(customerId: Long): Flow<List<Order>> {
         return orderDao.getOrdersByCustomerId(customerId)
     }

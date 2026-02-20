@@ -2,7 +2,7 @@
 
 UI 组件规范 - 定义平板电脑触摸屏界面的功能要求（Material Design 3 增强版）。
 
-## Requirements
+## ADDED Requirements
 
 ### Requirement: Material Design 3 Styling
 The system SHALL apply Material Design 3 styling to all UI components for visual consistency and modern appearance.
@@ -37,6 +37,8 @@ The system SHALL provide smooth transition animations between screens and state 
 - **WHEN** component state changes (e.g., expand, collapse)
 - **THEN** system animates the transition smoothly
 
+## MODIFIED Requirements
+
 ### Requirement: Large Button Interface
 The system SHALL provide large Material Design 3 styled buttons suitable for touch screen operation on tablets, with minimum touch target of 48dp x 48dp.
 
@@ -54,13 +56,6 @@ The system SHALL use Material Design 3 typography scale with large fonts for eas
 #### Scenario: Text Readability
 - **WHEN** user views any page in the system
 - **THEN** system displays text using Material Design 3 Body Large style (16sp minimum)
-
-### Requirement: Simple Operation Flow
-The system SHALL provide a simplified operation flow suitable for dry cleaning business processes.
-
-#### Scenario: Intuitive Navigation
-- **WHEN** user navigates through the system
-- **THEN** system presents clear, straightforward navigation options
 
 ### Requirement: Touch-Friendly Design
 The system SHALL be optimized for touch screen interaction on tablets with Material Design touch targets and feedback.

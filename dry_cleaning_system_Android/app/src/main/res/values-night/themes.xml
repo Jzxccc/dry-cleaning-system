@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- ============ 深色模式主题 ============ -->
+    <style name="Theme.DryCleaningSystemAndroid" parent="android:Theme.Material.NoActionBar">
+        <!-- 主色 -->
+        <item name="android:colorPrimary">@color/primary_dark</item>
+        <item name="android:colorPrimaryDark">@color/primary_variant_dark</item>
+        <item name="android:colorAccent">@color/primary_dark</item>
+        
+        <!-- 背景色 -->
+        <item name="android:colorBackground">@color/dark_background</item>
+        
+        <!-- 状态栏颜色 -->
+        <item name="android:statusBarColor">@color/dark_surface</item>
+    </style>
+</resources>

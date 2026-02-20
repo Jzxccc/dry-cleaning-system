@@ -1,47 +1,116 @@
 package com.chaser.drycleaningsystem.ui.customer
 
 import android.util.Log
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.outlined.AccountBalance
+import androidx.compose.material.icons.outlined.Person
+import androidx.compose.material.icons.outlined.Phone
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.chaser.drycleaningsystem.data.entity.Customer
+import com.chaser.drycleaningsystem.ui.components.EmptyStateView
+import com.chaser.drycleaningsystem.ui.theme.Primary
 
 /**
- * 客户列表页面
+ * 客户列表页面 - 现代化设计
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CustomerListScreen(
     viewModel: CustomerViewModel,
+    onNavigateBack: () -> Unit,
     onAddCustomer: () -> Unit,
     onEditCustomer: (Customer) -> Unit,
     onCustomerClick: (Customer) -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
     var searchQuery by remember { mutableStateOf("") }
-    
+
     Scaffold(
+        modifier = Modifier.fillMaxSize(),
         topBar = {
             TopAppBar(
-                title = { Text("客户管理") },
-                actions = {
-                    IconButton(onClick = { onAddCustomer() }) {
-                        Icon(Icons.Default.Add, contentDescription = "添加客户")
+                title = {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Outlined.Person,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onPrimary
+                        )
+                        Text("客户管理")
                     }
-                }
+                },
+                navigationIcon = {
+                    IconButton(onClick = onNavigateBack) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "返回"
+                        )
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    titleContentColor = Color.White,
+                    actionIconContentColor = Color.White,
+                    navigationIconContentColor = Color.White
+                ),
+                actions = {
+                    Button(
+                        onClick = onAddCustomer,
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color.White.copy(alpha = 0.3f),
+                            contentColor = Color.White
+                        ),
+                        contentPadding = ButtonDefaults.ButtonWithIconContentPadding
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Add,
+                                contentDescription = null,
+                                modifier = Modifier.size(18.dp),
+                                tint = Color.White
+                            )
+                            Text("新增客户", style = MaterialTheme.typography.labelLarge, color = Color.White)
+                        }
+                    }
+                },
             )
         }
     ) { paddingValues ->
@@ -50,29 +119,17 @@ fun CustomerListScreen(
                 .padding(paddingValues)
                 .fillMaxSize()
         ) {
-            // 搜索框
-            OutlinedTextField(
+            // 搜索区域
+            SearchBar(
                 value = searchQuery,
                 onValueChange = { searchQuery = it },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
-                placeholder = { Text("搜索客户姓名或手机号") },
-                leadingIcon = {
-                    Icon(Icons.Default.Search, contentDescription = null)
-                },
-                singleLine = true
+                placeholder = "搜索客户姓名或手机号"
             )
-            
+
             // 客户列表
             when (val state = uiState) {
                 is CustomerUiState.Loading -> {
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        CircularProgressIndicator()
-                    }
+                    LoadingStateView(message = "加载客户中...")
                 }
                 is CustomerUiState.Success -> {
                     val customers = state.customers.filter {
@@ -80,30 +137,41 @@ fun CustomerListScreen(
                         it.name.contains(searchQuery, ignoreCase = true) ||
                         (it.phone?.contains(searchQuery) == true)
                     }
-                    
+
                     if (customers.isEmpty()) {
-                        Box(
-                            modifier = Modifier.fillMaxSize(),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text("暂无客户")
-                        }
+                        EmptyStateView(
+                            title = if (searchQuery.isBlank()) "暂无客户" else "未找到客户",
+                            message = if (searchQuery.isBlank()) 
+                                "点击右上角按钮添加新客户" else 
+                                "请尝试其他搜索条件",
+                            actionLabel = if (searchQuery.isBlank()) "添加客户" else null,
+                            onActionClick = if (searchQuery.isBlank()) {
+                                { onAddCustomer() }
+                            } else null
+                        )
                     } else {
-                        LazyColumn {
+                        // 显示统计信息
+                        CustomerStatsBar(totalCustomers = customers.size)
+
+                        LazyColumn(
+                            modifier = Modifier.fillMaxSize(),
+                            contentPadding = PaddingValues(16.dp),
+                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
                             items(customers, key = { it.id }) { customer ->
-                                CustomerListItem(
+                                ModernCustomerListItem(
                                     customer = customer,
-                                    onEdit = { 
+                                    onEdit = {
                                         Log.d("DRY CLEAN SYSTEM LOG", "点击编辑客户：${customer.name}, ID: ${customer.id}")
-                                        onEditCustomer(customer) 
+                                        onEditCustomer(customer)
                                     },
-                                    onDelete = { 
+                                    onDelete = {
                                         Log.d("DRY CLEAN SYSTEM LOG", "点击删除客户：${customer.name}, ID: ${customer.id}")
-                                        viewModel.deleteCustomer(customer) 
+                                        viewModel.deleteCustomer(customer)
                                     },
-                                    onClick = { 
+                                    onClick = {
                                         Log.d("DRY CLEAN SYSTEM LOG", "点击查看客户详情：${customer.name}, ID: ${customer.id}")
-                                        onCustomerClick(customer) 
+                                        onCustomerClick(customer)
                                     }
                                 )
                             }
@@ -124,10 +192,95 @@ fun CustomerListScreen(
 }
 
 /**
- * 客户列表项
+ * 搜索栏
  */
 @Composable
-fun CustomerListItem(
+fun SearchBar(
+    value: String,
+    onValueChange: (String) -> Unit,
+    placeholder: String
+) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        color = MaterialTheme.colorScheme.surface,
+        shadowElevation = 2.dp
+    ) {
+        OutlinedTextField(
+            value = value,
+            onValueChange = onValueChange,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            placeholder = { Text(placeholder) },
+            leadingIcon = {
+                Icon(
+                    Icons.Default.Search,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            },
+            trailingIcon = if (value.isNotEmpty()) {
+                {
+                    IconButton(onClick = { onValueChange("") }) {
+                        Icon(Icons.Default.Clear, contentDescription = "清除")
+                    }
+                }
+            } else null,
+            singleLine = true,
+            shape = RoundedCornerShape(12.dp),
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedBorderColor = MaterialTheme.colorScheme.primary,
+                focusedLeadingIconColor = MaterialTheme.colorScheme.primary
+            )
+        )
+    }
+}
+
+/**
+ * 客户统计栏
+ */
+@Composable
+fun CustomerStatsBar(totalCustomers: Int) {
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(16.dp),
+        color = Primary.copy(alpha = 0.1f),
+        shape = RoundedCornerShape(12.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Outlined.Person,
+                    contentDescription = null,
+                    tint = Primary,
+                    modifier = Modifier.size(20.dp)
+                )
+                Text(
+                    text = "共 $totalCustomers 位客户",
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Medium,
+                    color = Primary
+                )
+            }
+        }
+    }
+}
+
+/**
+ * 现代化客户列表项
+ */
+@Composable
+fun ModernCustomerListItem(
     customer: Customer,
     onEdit: () -> Unit,
     onDelete: () -> Unit,
@@ -138,85 +291,211 @@ fun CustomerListItem(
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 4.dp)
             .clickable(onClick = onClick),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        shape = RoundedCornerShape(16.dp)
     ) {
-        Row(
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
+                .padding(16.dp)
         ) {
-            Column(modifier = Modifier.weight(1f)) {
+            // 第一行：客户姓名和头像
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    Text(
-                        text = customer.name,
-                        fontWeight = FontWeight.Bold,
-                        style = MaterialTheme.typography.titleMedium
-                    )
-                    // 显示拼音首字母
-                    val pinyin = getPinyinInitials(customer.name)
-                    if (pinyin.isNotEmpty()) {
-                        Text(
-                            text = "[$pinyin]",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                    // 头像
+                    Surface(
+                        modifier = Modifier.size(48.dp),
+                        shape = CircleShape,
+                        color = Primary.copy(alpha = 0.2f)
+                    ) {
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = customer.name.firstOrNull()?.toString() ?: "C",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = Primary
+                            )
+                        }
+                    }
+
+                    // 姓名和拼音
+                    Column {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            Text(
+                                text = customer.name,
+                                fontWeight = FontWeight.Bold,
+                                style = MaterialTheme.typography.titleMedium,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            // 显示拼音首字母
+                            val pinyin = getPinyinInitials(customer.name)
+                            if (pinyin.isNotEmpty()) {
+                                Surface(
+                                    color = MaterialTheme.colorScheme.primaryContainer,
+                                    shape = RoundedCornerShape(4.dp)
+                                ) {
+                                    Text(
+                                        text = "[$pinyin]",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                        modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp)
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // 操作按钮
+                Row {
+                    IconButton(onClick = onEdit) {
+                        Icon(
+                            Icons.Default.Edit,
+                            contentDescription = "编辑",
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                    IconButton(onClick = { showDeleteDialog = true }) {
+                        Icon(
+                            Icons.Default.Delete,
+                            contentDescription = "删除",
+                            tint = MaterialTheme.colorScheme.error
                         )
                     }
                 }
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // 第二行：联系方式
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                if (!customer.phone.isNullOrBlank()) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Outlined.Phone,
+                            contentDescription = null,
+                            modifier = Modifier.size(16.dp),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Text(
+                            text = customer.phone,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+                }
+            }
+
+            if (!customer.wechat.isNullOrBlank()) {
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
-                    text = customer.phone ?: "",
-                    style = MaterialTheme.typography.bodyMedium
+                    text = "微信：${customer.wechat}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-                if (!customer.wechat.isNullOrBlank()) {
-                    Text(
-                        text = "微信：${customer.wechat}",
-                        style = MaterialTheme.typography.bodySmall
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // 第三行：余额
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.AccountBalance,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp),
+                        tint = Primary
                     )
-                }
-                Text(
-                    text = "余额：¥${String.format("%.2f", customer.balance)}",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.primary
-                )
-                if (!customer.note.isNullOrBlank()) {
                     Text(
-                        text = "备注：${customer.note}",
+                        text = "余额",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
-            }
-            
-            Row {
-                IconButton(onClick = onEdit) {
-                    Icon(Icons.Default.Edit, contentDescription = "编辑")
+                Surface(
+                    color = Primary.copy(alpha = 0.1f),
+                    shape = RoundedCornerShape(8.dp)
+                ) {
+                    Text(
+                        text = "¥${String.format("%.2f", customer.balance)}",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = Primary,
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+                    )
                 }
-                IconButton(onClick = { showDeleteDialog = true }) {
-                    Icon(Icons.Default.Delete, contentDescription = "删除", tint = MaterialTheme.colorScheme.error)
+            }
+
+            // 备注
+            if (!customer.note.isNullOrBlank()) {
+                Spacer(modifier = Modifier.height(8.dp))
+                Surface(
+                    color = MaterialTheme.colorScheme.surfaceVariant,
+                    shape = RoundedCornerShape(8.dp)
+                ) {
+                    Text(
+                        text = "备注：${customer.note}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(8.dp)
+                    )
                 }
             }
         }
     }
-    
+
     // 删除确认对话框
     if (showDeleteDialog) {
         AlertDialog(
             onDismissRequest = { showDeleteDialog = false },
+            icon = {
+                Icon(
+                    Icons.Default.Delete,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.error
+                )
+            },
             title = { Text("确认删除") },
-            text = { Text("确定要删除客户\"${customer.name}\"吗？") },
+            text = { Text("确定要删除客户\"${customer.name}\"吗？此操作不可撤销。") },
             confirmButton = {
                 TextButton(
                     onClick = {
                         onDelete()
                         showDeleteDialog = false
-                    }
+                    },
+                    colors = ButtonDefaults.textButtonColors(
+                        contentColor = MaterialTheme.colorScheme.error
+                    )
                 ) {
                     Text("删除")
                 }
@@ -227,6 +506,32 @@ fun CustomerListItem(
                 }
             }
         )
+    }
+}
+
+/**
+ * 加载状态视图
+ */
+@Composable
+fun LoadingStateView(message: String) {
+    Box(
+        modifier = Modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            CircularProgressIndicator(
+                modifier = Modifier.size(48.dp),
+                color = MaterialTheme.colorScheme.primary
+            )
+            Text(
+                text = message,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
     }
 }
 
@@ -305,7 +610,7 @@ fun getPinyinInitials(chinese: String): String {
         '红' to 'h', '游' to 'y', '竺' to 'z', '权' to 'q', '逯' to 'l', '盖' to 'g',
         '益' to 'y', '桓' to 'h', '公' to 'g'
     )
-    
+
     return chinese.mapNotNull { char ->
         pinyinMap[char]
     }.joinToString("").uppercase()

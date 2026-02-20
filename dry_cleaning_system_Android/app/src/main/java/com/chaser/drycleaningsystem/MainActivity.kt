@@ -19,6 +19,11 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.chaser.drycleaningsystem.ui.components.navEnterTransition
+import com.chaser.drycleaningsystem.ui.components.navExitTransition
+import com.chaser.drycleaningsystem.ui.components.navPopEnterTransition
+import com.chaser.drycleaningsystem.ui.components.navPopExitTransition
+import com.chaser.drycleaningsystem.ui.dashboard.DashboardViewModel
 import com.chaser.drycleaningsystem.data.DataInjection
 import com.chaser.drycleaningsystem.data.entity.Customer
 import com.chaser.drycleaningsystem.data.repository.CustomerRepository
@@ -64,13 +69,34 @@ fun AppNavHost() {
 
     NavHost(
         navController = navController,
-        startDestination = "dashboard"
+        startDestination = "dashboard",
+        enterTransition = { navEnterTransition() },
+        exitTransition = { navExitTransition() },
+        popEnterTransition = { navPopEnterTransition() },
+        popExitTransition = { navPopExitTransition() }
     ) {
         composable("dashboard") {
+            val viewModel: DashboardViewModel = viewModel(
+                factory = object : androidx.lifecycle.ViewModelProvider.Factory {
+                    override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
+                        @Suppress("UNCHECKED_CAST")
+                        return DashboardViewModel(
+                            orderRepository = DataInjection.getOrderRepository(context),
+                            customerRepository = DataInjection.getCustomerRepository(context),
+                            rechargeRecordRepository = DataInjection.getRechargeRecordRepository(context)
+                        ) as T
+                    }
+                }
+            )
             DashboardScreen(
+                viewModel = viewModel,
                 onNavigateToCustomers = { navController.navigate("customers") },
                 onNavigateToOrders = { navController.navigate("orders") },
-                onNavigateToRecharge = { navController.navigate("recharge") },
+                onNavigateToRecharge = { 
+                    navController.navigate("recharge")
+                    // 从充值页面返回时刷新数据
+                    viewModel.refresh()
+                },
                 onNavigateToStatistics = { navController.navigate("statistics") }
             )
         }
@@ -93,11 +119,12 @@ fun AppNavHost() {
 
             CustomerListScreen(
                 viewModel = viewModel,
+                onNavigateBack = { navController.popBackStack() },
                 onAddCustomer = { showAddCustomerDialog = true },
                 onEditCustomer = { customer -> customerToEdit = customer },
-                onCustomerClick = { customer -> 
+                onCustomerClick = { customer ->
                     Log.d("DRY CLEAN SYSTEM LOG", "导航到客户详情：${customer.id}")
-                    navController.navigate("customer-detail/${customer.id}") 
+                    navController.navigate("customer-detail/${customer.id}")
                 }
             )
 
@@ -201,6 +228,7 @@ fun AppNavHost() {
             OrderListScreen(
                 viewModel = viewModel,
                 customerViewModel = customerViewModel,
+                onNavigateBack = { navController.popBackStack() },
                 onCreateOrder = { navController.navigate("new-order") },
                 onOrderClick = { orderId -> navController.navigate("order-detail/$orderId") }
             )

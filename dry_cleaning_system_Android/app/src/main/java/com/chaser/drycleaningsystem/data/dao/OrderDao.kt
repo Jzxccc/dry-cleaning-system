@@ -13,6 +13,9 @@ interface OrderDao {
     @Query("SELECT * FROM orders ORDER BY create_time DESC")
     fun getAllOrders(): Flow<List<Order>>
 
+    @Query("SELECT * FROM orders ORDER BY create_time DESC")
+    suspend fun getAllOrdersList(): List<Order>
+
     @Query("SELECT * FROM orders WHERE id = :orderId")
     suspend fun getOrderById(orderId: Long): Order?
 
@@ -37,10 +40,10 @@ interface OrderDao {
     @Query("SELECT * FROM orders WHERE strftime('%Y-%m', create_time/1000, 'unixepoch') = strftime('%Y-%m', :timestamp/1000, 'unixepoch') ORDER BY create_time DESC")
     suspend fun getOrdersByMonth(timestamp: Long): List<Order>
 
-    @Query("SELECT SUM(total_price) FROM orders WHERE date(create_time/1000, 'unixepoch') = date(:timestamp/1000, 'unixepoch') AND pay_type = '现金'")
+    @Query("SELECT SUM(total_price) FROM orders WHERE date(create_time/1000, 'unixepoch') = date(:timestamp/1000, 'unixepoch') AND pay_type = 'CASH'")
     suspend fun getCashIncomeByDate(timestamp: Long): Double?
 
-    @Query("SELECT SUM(total_price) FROM orders WHERE strftime('%Y-%m', create_time/1000, 'unixepoch') = strftime('%Y-%m', :timestamp/1000, 'unixepoch') AND pay_type = '现金'")
+    @Query("SELECT SUM(total_price) FROM orders WHERE strftime('%Y-%m', create_time/1000, 'unixepoch') = strftime('%Y-%m', :timestamp/1000, 'unixepoch') AND pay_type = 'CASH'")
     suspend fun getCashIncomeByMonth(timestamp: Long): Double?
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)

@@ -297,23 +297,52 @@ fun NewOrderScreen(
             
             // 提交按钮
             item {
+                // 计算总价
+                val totalPrice = clothesList.sumOf { it.price }
+                
+                // 获取客户余额
+                val customerBalance = selectedCustomer?.balance ?: 0.0
+                
+                // 检查储值支付时余额是否足够
+                val isBalanceSufficient = if (payType == "PREPAID") {
+                    customerBalance >= totalPrice
+                } else {
+                    true
+                }
+
                 Button(
                     onClick = {
-                        if (selectedCustomer != null && clothesList.isNotEmpty()) {
-                            onCreateOrder(
-                                selectedCustomer!!.id,
-                                payType,
-                                isUrgent,
-                                clothesList
-                            )
+                        selectedCustomer?.let { customer ->
+                            if (clothesList.isNotEmpty()) {
+                                onCreateOrder(
+                                    customer.id,
+                                    payType,
+                                    isUrgent,
+                                    clothesList
+                                )
+                            }
                         }
                     },
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(16.dp),
-                    enabled = selectedCustomer != null && clothesList.isNotEmpty()
+                    enabled = selectedCustomer != null && clothesList.isNotEmpty() && isBalanceSufficient
                 ) {
-                    Text("提交订单")
+                    Text(if (payType == "PREPAID" && !isBalanceSufficient) {
+                        "余额不足 (¥${String.format("%.2f", customerBalance)} < ¥${String.format("%.2f", totalPrice)})"
+                    } else {
+                        "提交订单"
+                    })
+                }
+
+                // 余额不足提示
+                if (payType == "PREPAID" && selectedCustomer != null && !isBalanceSufficient) {
+                    Text(
+                        text = "⚠️ 客户余额 (¥${String.format("%.2f", customerBalance)}) 不足以支付订单金额 (¥${String.format("%.2f", totalPrice)})，请选择现金支付或先充值",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.padding(horizontal = 16.dp)
+                    )
                 }
             }
         }

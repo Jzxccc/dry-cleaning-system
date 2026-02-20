@@ -8,9 +8,16 @@ import kotlinx.coroutines.flow.Flow
  * 客户数据仓库
  */
 class CustomerRepository(private val customerDao: CustomerDao) {
-    
+
     val allCustomers: Flow<List<Customer>> = customerDao.getAllCustomers()
-    
+
+    /**
+     * 获取所有客户（非 Flow 版本）
+     */
+    suspend fun getAllCustomers(): List<Customer> {
+        return customerDao.getAllCustomersList()
+    }
+
     fun searchCustomers(keyword: String): Flow<List<Customer>> {
         return customerDao.searchCustomers(keyword)
     }

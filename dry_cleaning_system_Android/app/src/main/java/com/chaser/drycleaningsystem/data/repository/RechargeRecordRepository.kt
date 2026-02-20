@@ -8,11 +8,18 @@ import kotlinx.coroutines.flow.Flow
  * 充值记录数据仓库
  */
 class RechargeRecordRepository(private val rechargeRecordDao: RechargeRecordDao) {
-    
+
     fun getAllRechargeRecords(): Flow<List<RechargeRecord>> {
         return rechargeRecordDao.getAllRechargeRecords()
     }
-    
+
+    /**
+     * 获取所有充值记录（非 Flow 版本）
+     */
+    suspend fun getAllRecords(): List<RechargeRecord> {
+        return rechargeRecordDao.getAllRechargeRecordsList()
+    }
+
     fun getRechargeRecordsByCustomerId(customerId: Long): Flow<List<RechargeRecord>> {
         return rechargeRecordDao.getRechargeRecordsByCustomerId(customerId)
     }

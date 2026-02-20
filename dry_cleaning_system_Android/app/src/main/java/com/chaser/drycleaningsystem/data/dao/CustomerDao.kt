@@ -13,6 +13,9 @@ interface CustomerDao {
     @Query("SELECT * FROM customer ORDER BY create_time DESC")
     fun getAllCustomers(): Flow<List<Customer>>
 
+    @Query("SELECT * FROM customer ORDER BY create_time DESC")
+    suspend fun getAllCustomersList(): List<Customer>
+
     @Query("SELECT * FROM customer WHERE id = :customerId")
     suspend fun getCustomerById(customerId: Long): Customer?
 

@@ -13,6 +13,9 @@ interface RechargeRecordDao {
     @Query("SELECT * FROM recharge_record ORDER BY create_time DESC")
     fun getAllRechargeRecords(): Flow<List<RechargeRecord>>
 
+    @Query("SELECT * FROM recharge_record ORDER BY create_time DESC")
+    suspend fun getAllRechargeRecordsList(): List<RechargeRecord>
+
     @Query("SELECT * FROM recharge_record WHERE customer_id = :customerId ORDER BY create_time DESC")
     fun getRechargeRecordsByCustomerId(customerId: Long): Flow<List<RechargeRecord>>
 

@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
@@ -19,11 +20,12 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.chaser.drycleaningsystem.data.DataInjection
 import com.chaser.drycleaningsystem.data.entity.Customer
+import com.chaser.drycleaningsystem.ui.customer.CustomerEditDialog
 import com.chaser.drycleaningsystem.ui.customer.CustomerUiState
 import com.chaser.drycleaningsystem.ui.customer.CustomerViewModel
 
 /**
- * 客户选择对话框 - 带搜索过滤
+ * 客户选择对话框 - 带搜索过滤和新增客户功能
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -34,6 +36,9 @@ fun CustomerSelectorDialog(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     var searchQuery by remember { mutableStateOf("") }
+    var showAddCustomerDialog by remember { mutableStateOf(false) }
+    var showAutoSelect by remember { mutableStateOf(false) }
+    var newCustomerPhone by remember { mutableStateOf<String?>(null) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -41,7 +46,32 @@ fun CustomerSelectorDialog(
             Column(
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Text("选择客户")
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text("选择客户")
+                    // 新增客户按钮
+                    IconButton(
+                        onClick = { showAddCustomerDialog = true }
+                    ) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Add,
+                                contentDescription = "新增客户",
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                            Text(
+                                text = "新增",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                    }
+                }
                 // 搜索框
                 OutlinedTextField(
                     value = searchQuery,
@@ -124,16 +154,38 @@ fun CustomerSelectorDialog(
             }
         },
         confirmButton = {
-            TextButton(onClick = onDismiss) {
-                Text("取消")
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("关闭")
-            }
+            // 不显示确认按钮，只保留关闭按钮
         }
     )
+    
+    // 新增客户对话框
+    if (showAddCustomerDialog) {
+        CustomerEditDialog(
+            onDismiss = { showAddCustomerDialog = false },
+            onConfirm = { name, phone, wechat, balance, note ->
+                viewModel.addCustomer(name, phone, wechat, balance, note)
+                showAddCustomerDialog = false
+                // 保存新客户手机号，用于自动选择
+                newCustomerPhone = phone
+                showAutoSelect = true
+            },
+            customer = null
+        )
+    }
+    
+    // 自动选择新客户
+    if (showAutoSelect && newCustomerPhone != null) {
+        val allCustomers by viewModel.allCustomers.collectAsState(initial = emptyList())
+        val newCustomer = allCustomers.find { it.phone == newCustomerPhone }
+        
+        LaunchedEffect(newCustomer) {
+            if (newCustomer != null) {
+                onCustomerSelected(newCustomer)
+                showAutoSelect = false
+                newCustomerPhone = null
+            }
+        }
+    }
 }
 
 /**

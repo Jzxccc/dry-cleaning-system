@@ -72,6 +72,9 @@ class CustomerViewModel(
     fun addCustomer(name: String, phone: String?, wechat: String?, balance: Double, note: String?) {
         viewModelScope.launch {
             try {
+                Log.d("DRY CLEAN SYSTEM LOG", "CustomerViewModel.addCustomer 被调用")
+                Log.d("DRY CLEAN SYSTEM LOG", "客户信息：name=$name, phone=${phone ?: "null"}, balance=${balance}")
+                
                 val customer = Customer(
                     name = name,
                     phone = phone,
@@ -79,9 +82,10 @@ class CustomerViewModel(
                     balance = balance,
                     note = note
                 )
-                repository.insert(customer)
+                val customerId = repository.insert(customer)
+                Log.d("DRY CLEAN SYSTEM LOG", "客户保存成功，customerId=$customerId, balance=${customer.balance}")
             } catch (e: Exception) {
-                // Handle error
+                Log.e("DRY CLEAN SYSTEM LOG", "客户保存失败：${e.message}", e)
             }
         }
     }

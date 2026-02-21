@@ -16,6 +16,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -31,6 +33,7 @@ import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material.icons.outlined.TrendingUp
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -38,6 +41,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
@@ -52,6 +56,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.compose.runtime.collectAsState
@@ -277,115 +282,115 @@ fun ModernTopAppBar(selectedDate: Date) {
  */
 @Composable
 fun StatsSectionFixed(stats: List<StatCard>) {
-    Column(
+    // 背景色块区域
+    Surface(
         modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 12.dp, vertical = 8.dp)
+            .fillMaxWidth(),
+        color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
     ) {
-        // 第一行
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 16.dp)
         ) {
-            StatCardItemFixed(
-                stat = stats[0],
-                modifier = Modifier
-                    .weight(1f)
-                    .height(100.dp)
+            // 标题
+            Text(
+                text = "今日概览",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onPrimaryContainer,
+                modifier = Modifier.padding(bottom = 12.dp)
             )
-            StatCardItemFixed(
-                stat = stats[1],
-                modifier = Modifier
-                    .weight(1f)
-                    .height(100.dp)
-            )
-        }
-
-        Spacer(modifier = Modifier.height(10.dp))
-
-        // 第二行
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
-            StatCardItemFixed(
-                stat = stats[2],
-                modifier = Modifier
-                    .weight(1f)
-                    .height(100.dp)
-            )
-            StatCardItemFixed(
-                stat = stats[3],
-                modifier = Modifier
-                    .weight(1f)
-                    .height(100.dp)
-            )
+            
+            // 2x2 网格布局
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceEvenly
+            ) {
+                // 第一列
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    StatCardItemFlat(stat = stats[0])
+                    StatCardItemFlat(stat = stats[2])
+                }
+                
+                // 第二列
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    StatCardItemFlat(stat = stats[1])
+                    StatCardItemFlat(stat = stats[3])
+                }
+            }
         }
     }
 }
 
 /**
- * 单个统计卡片 - 固定版本
+ * 扁平化统计项 - 图标在左，文字在右
  */
 @Composable
-fun StatCardItemFixed(
+fun StatCardItemFlat(
     stat: StatCard,
     modifier: Modifier = Modifier
 ) {
     Surface(
-        modifier = modifier,
-        shape = RoundedCornerShape(12.dp),
-        color = stat.backgroundColor,
-        shadowElevation = 6.dp
+        modifier = modifier
+            .width(270.dp)
+            .height(75.dp),
+        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.5f),
+        shape = RoundedCornerShape(8.dp)
     ) {
-        Column(
+        Row(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(12.dp),
-            verticalArrangement = Arrangement.SpaceBetween
+                .padding(horizontal = 12.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            // 图标
+            // 图标（左侧）
             Icon(
                 imageVector = stat.icon,
                 contentDescription = null,
-                modifier = Modifier.size(24.dp),
-                tint = Color.White.copy(alpha = 0.9f)
+                modifier = Modifier.size(46.dp),
+                tint = stat.backgroundColor
             )
-
-            // 数值和标题
-            Column {
+            
+            // 分割线（垂直）
+            VerticalDivider(
+                modifier = Modifier
+                    .height(55.dp)
+                    .width(1.dp),
+                color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
+            )
+            
+            // 文字（右侧，垂直排列）
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .height(55.dp),
+                horizontalAlignment = Alignment.Start,
+                verticalArrangement = Arrangement.Center
+            ) {
+                // 数值
                 Text(
                     text = stat.value,
                     style = MaterialTheme.typography.headlineSmall,
                     fontWeight = FontWeight.Bold,
-                    color = Color.White
+                    color = MaterialTheme.colorScheme.onSurface,
+                    maxLines = 1
                 )
+                
+                // 标题
                 Text(
                     text = stat.title,
                     style = MaterialTheme.typography.bodySmall,
-                    color = Color.White.copy(alpha = 0.9f),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1
                 )
-            }
-
-            // 趋势
-            if (stat.trend != null) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    Icon(
-                        imageVector = if (stat.trendUp) Icons.Default.ArrowUpward else Icons.Default.ArrowDownward,
-                        contentDescription = null,
-                        modifier = Modifier.size(12.dp),
-                        tint = Color.White.copy(alpha = 0.9f)
-                    )
-                    Text(
-                        text = stat.trend,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = Color.White.copy(alpha = 0.9f)
-                    )
-                }
             }
         }
     }

@@ -61,7 +61,9 @@ fun CustomerEditDialog(
                     value = balance,
                     onValueChange = { balance = it },
                     label = { Text("余额") },
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
+                    prefix = { Text("¥") },
+                    singleLine = true
                 )
 
                 Spacer(modifier = Modifier.height(8.dp))

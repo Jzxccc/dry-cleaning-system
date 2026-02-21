@@ -1,6 +1,7 @@
 package com.chaser.drycleaningsystem.ui.order
 
 import android.content.Context
+import android.util.Log
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -20,9 +21,11 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.chaser.drycleaningsystem.data.DataInjection
 import com.chaser.drycleaningsystem.data.entity.Customer
+import com.chaser.drycleaningsystem.data.entity.RechargeRecord
 import com.chaser.drycleaningsystem.ui.customer.CustomerEditDialog
 import com.chaser.drycleaningsystem.ui.customer.CustomerUiState
 import com.chaser.drycleaningsystem.ui.customer.CustomerViewModel
+import kotlinx.coroutines.launch
 
 /**
  * 客户选择对话框 - 带搜索过滤和新增客户功能
@@ -34,11 +37,17 @@ fun CustomerSelectorDialog(
     onCustomerSelected: (Customer) -> Unit,
     onDismiss: () -> Unit
 ) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val rechargeRecordRepository = remember { DataInjection.getRechargeRecordRepository(context) }
+    val customerRepository = remember { DataInjection.getCustomerRepository(context) }
+    
     val uiState by viewModel.uiState.collectAsState()
     var searchQuery by remember { mutableStateOf("") }
     var showAddCustomerDialog by remember { mutableStateOf(false) }
     var showAutoSelect by remember { mutableStateOf(false) }
     var newCustomerPhone by remember { mutableStateOf<String?>(null) }
+    var rechargeAmount by remember { mutableStateOf("") }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -163,11 +172,53 @@ fun CustomerSelectorDialog(
         CustomerEditDialog(
             onDismiss = { showAddCustomerDialog = false },
             onConfirm = { name, phone, wechat, balance, note ->
-                viewModel.addCustomer(name, phone, wechat, balance, note)
-                showAddCustomerDialog = false
-                // 保存新客户手机号，用于自动选择
-                newCustomerPhone = phone
-                showAutoSelect = true
+                scope.launch {
+                    try {
+                        // 保存客户
+                        val customer = Customer(
+                            name = name,
+                            phone = phone ?: "",
+                            wechat = wechat ?: "",
+                            balance = balance,
+                            note = note ?: ""
+                        )
+                        val customerId = customerRepository.insert(customer)
+                        
+                        Log.d("DRY CLEAN SYSTEM LOG", "客户保存成功，customerId=$customerId")
+                        
+                        // 如果有储值金额，创建充值记录并更新余额
+                        val rechargeValue = rechargeAmount.toDoubleOrNull() ?: 0.0
+                        if (rechargeValue > 0) {
+                            val bonusRate = if (rechargeValue >= 200) 0.2 else if (rechargeValue >= 100) 0.1 else 0.0
+                            val bonusAmount = rechargeValue * bonusRate
+                            
+                            // 创建充值记录
+                            val record = RechargeRecord(
+                                customerId = customerId,
+                                rechargeAmount = rechargeValue,
+                                giftAmount = bonusAmount
+                            )
+                            rechargeRecordRepository.insert(record)
+                            
+                            Log.d("DRY CLEAN SYSTEM LOG", "充值记录创建成功，recordId=${record.id}")
+                            
+                            // 更新客户余额
+                            val newBalance = balance + rechargeValue + bonusAmount
+                            val updatedCustomer = customer.copy(balance = newBalance)
+                            customerRepository.update(updatedCustomer)
+                            
+                            Log.d("DRY CLEAN SYSTEM LOG", "客户余额更新成功，newBalance=$newBalance")
+                        }
+                        
+                        // 自动选择新客户
+                        newCustomerPhone = phone
+                        showAutoSelect = true
+                        showAddCustomerDialog = false
+                        rechargeAmount = ""
+                    } catch (e: Exception) {
+                        Log.e("DRY CLEAN SYSTEM LOG", "新增客户失败：${e.message}", e)
+                    }
+                }
             },
             customer = null
         )

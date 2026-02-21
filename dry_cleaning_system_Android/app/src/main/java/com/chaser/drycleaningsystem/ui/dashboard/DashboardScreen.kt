@@ -146,7 +146,7 @@ fun DashboardScreen(
         ),
         StatCard(
             title = "月营收",
-            value = if (uiState.isLoading) "..." else "¥${String.format("%.2f", uiState.monthRevenue)}",
+            value = if (uiState.isLoading) "..." else "¥${String.format("%.1f", uiState.monthRevenue)}",
             icon = Icons.Outlined.TrendingUp,
             trend = null,
             trendUp = true,

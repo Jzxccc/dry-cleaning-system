@@ -24,9 +24,12 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.rememberAsyncImagePainter
 import com.chaser.drycleaningsystem.data.entity.Clothes
+import com.chaser.drycleaningsystem.data.entity.Customer
 import com.chaser.drycleaningsystem.data.entity.Order
+import com.chaser.drycleaningsystem.ui.customer.CustomerViewModel
 import com.chaser.drycleaningsystem.utils.CameraHelper
 import java.io.File
 import java.text.SimpleDateFormat
@@ -78,6 +81,9 @@ fun OrderDetailScreen(
     var showStatusDialog by remember { mutableStateOf(false) }
     var showDeleteDialog by remember { mutableStateOf(false) }
     var showDeleteSuccessDialog by remember { mutableStateOf(false) }
+    var showPaymentDialog by remember { mutableStateOf(false) }
+    var showPaymentConfirmDialog by remember { mutableStateOf(false) }
+    var pendingStatusChange by remember { mutableStateOf<String?>(null) }
 
     Scaffold(
         topBar = {
@@ -97,12 +103,33 @@ fun OrderDetailScreen(
                             tint = MaterialTheme.colorScheme.error
                         )
                     }
-                    // 变更状态按钮
-                    IconButton(onClick = { showStatusDialog = true }) {
-                        Icon(
-                            imageVector = Icons.Default.Refresh,
-                            contentDescription = "变更状态"
-                        )
+                    
+                    // 付款按钮（仅未付款状态显示）
+                    if (displayOrder.payType == "UNPAID") {
+                        IconButton(onClick = { showPaymentDialog = true }) {
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.CheckCircle,
+                                    contentDescription = "付款",
+                                    tint = MaterialTheme.colorScheme.primary
+                                )
+                                Text(
+                                    text = "付款",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                            }
+                        }
+                    } else {
+                        // 变更状态按钮（已付款状态显示）
+                        IconButton(onClick = { showStatusDialog = true }) {
+                            Icon(
+                                imageVector = Icons.Default.Refresh,
+                                contentDescription = "变更状态"
+                            )
+                        }
                     }
                 }
             )
@@ -240,13 +267,182 @@ fun OrderDetailScreen(
         StatusChangeDialog(
             currentStatus = displayOrder.status,
             onStatusSelected = { newStatus ->
-                viewModel.updateOrderStatusSync(displayOrder.id, newStatus)
+                // 如果是未付款订单且要改为已取，弹出付款确认
+                if (displayOrder.payType == "UNPAID" && newStatus == "FINISHED") {
+                    pendingStatusChange = newStatus
+                    showPaymentConfirmDialog = true
+                } else {
+                    viewModel.updateOrderStatusSync(displayOrder.id, newStatus)
+                }
                 showStatusDialog = false
             },
             onDismiss = { showStatusDialog = false }
         )
     }
     
+    // 付款确认对话框（未付款订单变更为已取时）
+    if (showPaymentConfirmDialog) {
+        AlertDialog(
+            onDismissRequest = { showPaymentConfirmDialog = false },
+            title = { Text("订单付款确认") },
+            text = {
+                Column {
+                    Text("订单金额：¥${String.format("%.2f", displayOrder.totalPrice)}")
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text("订单状态将变更为'已取'，请选择付款方式：")
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        // 已付款，处理付款并更新状态
+                        viewModel.processPayment(
+                            orderId = displayOrder.id,
+                            customerId = displayOrder.customerId,
+                            amount = displayOrder.totalPrice,
+                            payType = "PREPAID",
+                            onSuccess = {
+                                showPaymentConfirmDialog = false
+                                // 刷新当前订单数据
+                                viewModel.refreshCurrentOrder(displayOrder.id)
+                                pendingStatusChange?.let { status ->
+                                    viewModel.updateOrderStatusSync(displayOrder.id, status)
+                                    pendingStatusChange = null
+                                }
+                            },
+                            onError = { 
+                                // 储值失败，改用现金
+                                viewModel.processPayment(
+                                    orderId = displayOrder.id,
+                                    customerId = displayOrder.customerId,
+                                    amount = displayOrder.totalPrice,
+                                    payType = "CASH",
+                                    onSuccess = {
+                                        showPaymentConfirmDialog = false
+                                        // 刷新当前订单数据
+                                        viewModel.refreshCurrentOrder(displayOrder.id)
+                                        pendingStatusChange?.let { status ->
+                                            viewModel.updateOrderStatusSync(displayOrder.id, status)
+                                            pendingStatusChange = null
+                                        }
+                                    },
+                                    onError = { /* 错误处理 */ }
+                                )
+                            }
+                        )
+                    }
+                ) {
+                    Text("已付款")
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        // 未付款，直接更新状态
+                        showPaymentConfirmDialog = false
+                        pendingStatusChange?.let { status ->
+                            viewModel.updateOrderStatusSync(displayOrder.id, status)
+                            pendingStatusChange = null
+                        }
+                    }
+                ) {
+                    Text("未付款")
+                }
+            }
+        )
+    }
+
+    // 付款对话框（直接点击付款按钮）
+    if (showPaymentDialog) {
+        val context = LocalContext.current
+        val customerViewModel: CustomerViewModel = viewModel(
+            factory = object : androidx.lifecycle.ViewModelProvider.Factory {
+                override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
+                    @Suppress("UNCHECKED_CAST")
+                    return CustomerViewModel(
+                        repository = com.chaser.drycleaningsystem.data.DataInjection.getCustomerRepository(context),
+                        orderRepository = com.chaser.drycleaningsystem.data.DataInjection.getOrderRepository(context),
+                        rechargeRecordRepository = com.chaser.drycleaningsystem.data.DataInjection.getRechargeRecordRepository(context)
+                    ) as T
+                }
+            }
+        )
+        
+        val customer by customerViewModel.getCustomerById(displayOrder.customerId).collectAsState(initial = null)
+        
+        AlertDialog(
+            onDismissRequest = { showPaymentDialog = false },
+            title = { Text("订单付款") },
+            text = {
+                Column {
+                    Text("订单金额：¥${String.format("%.2f", displayOrder.totalPrice)}")
+                    Spacer(modifier = Modifier.height(16.dp))
+                    
+                    customer?.let {
+                        Text("客户余额：¥${String.format("%.2f", it.balance)}")
+                        Spacer(modifier = Modifier.height(8.dp))
+                        
+                        if (it.balance >= displayOrder.totalPrice) {
+                            Text(
+                                text = "✓ 余额充足，可使用储值支付",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        } else {
+                            Text(
+                                text = "⚠ 余额不足，请使用现金支付",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.error
+                            )
+                        }
+                    }
+                    
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text("请选择付款方式：")
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        viewModel.processPayment(
+                            orderId = displayOrder.id,
+                            customerId = displayOrder.customerId,
+                            amount = displayOrder.totalPrice,
+                            payType = "PREPAID",
+                            onSuccess = {
+                                showPaymentDialog = false
+                                viewModel.refreshCurrentOrder(displayOrder.id)
+                            },
+                            onError = { /* 错误处理 */ }
+                        )
+                    },
+                    enabled = customer?.balance ?: 0.0 >= displayOrder.totalPrice
+                ) {
+                    Text("储值支付")
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        viewModel.processPayment(
+                            orderId = displayOrder.id,
+                            customerId = displayOrder.customerId,
+                            amount = displayOrder.totalPrice,
+                            payType = "CASH",
+                            onSuccess = {
+                                showPaymentDialog = false
+                                viewModel.refreshCurrentOrder(displayOrder.id)
+                            },
+                            onError = { /* 错误处理 */ }
+                        )
+                    }
+                ) {
+                    Text("现金支付")
+                }
+            }
+        )
+    }
+
     // 删除确认对话框
     if (showDeleteDialog) {
         AlertDialog(
@@ -576,4 +772,99 @@ fun formatDateTime(dateStr: String): String {
     } catch (e: Exception) {
         dateStr
     }
+}
+
+/**
+ * 付款对话框
+ */
+@Composable
+fun PaymentDialog(
+    amount: Double,
+    customerId: Long,
+    orderId: Long,
+    onPaymentComplete: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    val context = LocalContext.current
+    val orderViewModel: OrderViewModel = viewModel()
+    val customerViewModel: CustomerViewModel = viewModel(
+        factory = object : androidx.lifecycle.ViewModelProvider.Factory {
+            override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
+                @Suppress("UNCHECKED_CAST")
+                return CustomerViewModel(
+                    repository = com.chaser.drycleaningsystem.data.DataInjection.getCustomerRepository(context),
+                    orderRepository = com.chaser.drycleaningsystem.data.DataInjection.getOrderRepository(context),
+                    rechargeRecordRepository = com.chaser.drycleaningsystem.data.DataInjection.getRechargeRecordRepository(context)
+                ) as T
+            }
+        }
+    )
+    
+    val customer by customerViewModel.getCustomerById(customerId).collectAsState(initial = null)
+    
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("订单付款") },
+        text = {
+            Column {
+                Text("订单金额：¥${String.format("%.2f", amount)}")
+                Spacer(modifier = Modifier.height(16.dp))
+                
+                customer?.let {
+                    Text("客户余额：¥${String.format("%.2f", it.balance)}")
+                    Spacer(modifier = Modifier.height(8.dp))
+                    
+                    if (it.balance >= amount) {
+                        Text(
+                            text = "✓ 余额充足，可使用储值支付",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    } else {
+                        Text(
+                            text = "⚠ 余额不足，请使用现金支付",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.error
+                        )
+                    }
+                }
+                
+                Spacer(modifier = Modifier.height(16.dp))
+                Text("请选择付款方式：")
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = {
+                    orderViewModel.processPayment(
+                        orderId = orderId,
+                        customerId = customerId,
+                        amount = amount,
+                        payType = "PREPAID",
+                        onSuccess = onPaymentComplete,
+                        onError = { /* 错误处理 */ }
+                    )
+                },
+                enabled = customer?.balance ?: 0.0 >= amount
+            ) {
+                Text("储值支付")
+            }
+        },
+        dismissButton = {
+            TextButton(
+                onClick = {
+                    orderViewModel.processPayment(
+                        orderId = orderId,
+                        customerId = customerId,
+                        amount = amount,
+                        payType = "CASH",
+                        onSuccess = onPaymentComplete,
+                        onError = { /* 错误处理 */ }
+                    )
+                }
+            ) {
+                Text("现金支付")
+            }
+        }
+    )
 }

@@ -59,7 +59,16 @@ class CustomerViewModel(
     fun search(query: String) {
         _searchQuery.value = query
     }
-    
+
+    /**
+     * 根据 ID 获取客户
+     */
+    fun getCustomerById(customerId: Long): Flow<Customer?> {
+        return allCustomers.map { customers ->
+            customers.find { it.id == customerId }
+        }
+    }
+
     fun addCustomer(name: String, phone: String?, wechat: String?, balance: Double, note: String?) {
         viewModelScope.launch {
             try {

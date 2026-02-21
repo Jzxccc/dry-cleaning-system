@@ -327,6 +327,7 @@ fun StatusFilterRow(
             ModernStatusChip("未洗", "UNWASHED", selectedStatus, onStatusSelected)
             ModernStatusChip("已洗", "WASHED", selectedStatus, onStatusSelected)
             ModernStatusChip("已取", "FINISHED", selectedStatus, onStatusSelected)
+            ModernStatusChip("未付款", "UNPAID", selectedStatus, onStatusSelected)
         }
     }
 }
@@ -343,6 +344,7 @@ fun ModernStatusChip(
         "UNWASHED" -> Color(0xFFFFF3E0) to Color(0xFFE65100)
         "WASHED" -> Color(0xFFE3F2FD) to Color(0xFF0277BD)
         "FINISHED" -> Color(0xFFE8F5E9) to Color(0xFF2E7D32)
+        "UNPAID" -> Color(0xFFFFEBEE) to Color(0xFFC62828)
         else -> Color.Transparent to MaterialTheme.colorScheme.onSurface
     }
 

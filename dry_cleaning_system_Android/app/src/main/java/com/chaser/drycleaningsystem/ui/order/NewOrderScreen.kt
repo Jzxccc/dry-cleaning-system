@@ -343,12 +343,13 @@ fun NewOrderScreen(
                                 selected = payType == "PREPAID",
                                 onClick = { payType = "PREPAID" },
                                 label = { Text("储值") },
-                                modifier = Modifier.weight(1f)
+                                modifier = Modifier.weight(1f),
+                                enabled = selectedCustomer?.balance ?: 0.0 > 0
                             )
                             FilterChip(
                                 selected = payType == "UNPAID",
                                 onClick = { payType = "UNPAID" },
-                                label = { Text("未支付") },
+                                label = { Text("未付款") },
                                 modifier = Modifier.weight(1f)
                             )
                         }

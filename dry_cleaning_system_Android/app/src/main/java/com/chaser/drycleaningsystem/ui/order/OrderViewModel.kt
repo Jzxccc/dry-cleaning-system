@@ -62,7 +62,17 @@ class OrderViewModel(
     private fun observeOrders() {
         viewModelScope.launch {
             allOrders.collect { orders ->
-                _uiState.value = OrderUiState.Success(orders)
+                // 根据筛选条件过滤订单
+                val filteredOrders = orders.filter { order ->
+                    val statusFilter = _orderStatusFilter.value
+                    when (statusFilter) {
+                        null -> true // 全部
+                        "UNPAID" -> order.payType == "UNPAID" // 按支付类型筛选
+                        else -> order.status == statusFilter // 按状态筛选
+                    }
+                }
+                
+                _uiState.value = OrderUiState.Success(filteredOrders)
                 // 更新当前订单的状态
                 _currentOrder.value?.let { currentOrder ->
                     val updatedOrder = orders.find { it.id == currentOrder.id }
@@ -280,6 +290,18 @@ class OrderViewModel(
     }
 
     /**
+     * 刷新当前订单数据
+     */
+    fun refreshCurrentOrder(orderId: Long) {
+        viewModelScope.launch {
+            val order = orderRepository.getOrderById(orderId)
+            if (order != null) {
+                _currentOrder.value = order
+            }
+        }
+    }
+
+    /**
      * 保存照片路径到数据库
      */
     fun savePhotoPath(orderId: Long, photoPath: String) {
@@ -288,6 +310,53 @@ class OrderViewModel(
                 orderRepository.updatePhotoPath(orderId, photoPath)
             } catch (e: Exception) {
                 // Handle error
+            }
+        }
+    }
+
+    /**
+     * 处理付款
+     */
+    fun processPayment(
+        orderId: Long,
+        customerId: Long,
+        amount: Double,
+        payType: String,
+        onSuccess: () -> Unit,
+        onError: (String) -> Unit
+    ) {
+        viewModelScope.launch {
+            try {
+                val order = orderRepository.getOrderById(orderId)
+                if (order == null) {
+                    onError("订单不存在")
+                    return@launch
+                }
+
+                // 如果是储值支付，检查并扣减余额
+                if (payType == "PREPAID") {
+                    val customer = customerRepository.getCustomerById(customerId)
+                    if (customer == null) {
+                        onError("客户不存在")
+                        return@launch
+                    }
+
+                    if (customer.balance < amount) {
+                        onError("客户余额不足")
+                        return@launch
+                    }
+
+                    // 扣减余额
+                    val newBalance = customer.balance - amount
+                    customerRepository.update(customer.copy(balance = newBalance))
+                }
+
+                // 更新订单支付类型
+                orderRepository.update(order.copy(payType = payType))
+
+                onSuccess()
+            } catch (e: Exception) {
+                onError("付款失败：${e.message}")
             }
         }
     }

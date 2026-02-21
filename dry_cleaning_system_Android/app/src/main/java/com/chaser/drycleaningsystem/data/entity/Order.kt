@@ -18,5 +18,6 @@ data class Order(
     val urgent: Int = 0,
     val status: String,
     @ColumnInfo(name = "expected_time") val expectedTime: String?,
-    @ColumnInfo(name = "create_time") val createTime: String = System.currentTimeMillis().toString()
+    @ColumnInfo(name = "create_time") val createTime: String = System.currentTimeMillis().toString(),
+    @ColumnInfo(name = "photo_path") val photoPath: String? = null
 )

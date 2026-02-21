@@ -57,4 +57,7 @@ interface OrderDao {
 
     @Query("DELETE FROM orders WHERE id = :orderId")
     suspend fun deleteById(orderId: Long)
+
+    @Query("UPDATE orders SET photo_path = :photoPath WHERE id = :orderId")
+    suspend fun updatePhotoPath(orderId: Long, photoPath: String?)
 }

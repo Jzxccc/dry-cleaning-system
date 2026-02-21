@@ -107,6 +107,9 @@ dependencies {
     implementation("androidx.camera:camera-lifecycle:${cameraxVersion}")
     implementation("androidx.camera:camera-view:${cameraxVersion}")
 
+    // Coil 图片加载
+    implementation("io.coil-kt:coil-compose:2.5.0")
+
     // 平板兼容性：窗口管理器
     implementation(libs.androidx.window.window)
     implementation(libs.androidx.window.window.java)

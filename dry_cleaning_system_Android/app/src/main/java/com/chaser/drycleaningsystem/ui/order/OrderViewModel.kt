@@ -1,5 +1,6 @@
 package com.chaser.drycleaningsystem.ui.order
 
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.chaser.drycleaningsystem.data.entity.Clothes
@@ -7,6 +8,7 @@ import com.chaser.drycleaningsystem.data.entity.Order
 import com.chaser.drycleaningsystem.data.repository.ClothesRepository
 import com.chaser.drycleaningsystem.data.repository.CustomerRepository
 import com.chaser.drycleaningsystem.data.repository.OrderRepository
+import com.chaser.drycleaningsystem.utils.CameraHelper
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -23,8 +25,11 @@ import java.util.*
 class OrderViewModel(
     private val orderRepository: OrderRepository,
     private val customerRepository: CustomerRepository,
-    private val clothesRepository: ClothesRepository
+    private val clothesRepository: ClothesRepository,
+    private val context: Context
 ) : ViewModel() {
+
+    private val cameraHelper by lazy { CameraHelper(context) }
 
     private val _searchQuery = MutableStateFlow("")
     val searchQuery: StateFlow<String> = _searchQuery
@@ -106,8 +111,10 @@ class OrderViewModel(
         payType: String,
         urgent: Boolean,
         clothesList: List<ClothesItem>
-    ) {
-        viewModelScope.launch {
+    ): Long {
+        var orderId = -1L
+        
+        runBlocking {
             try {
                 // 生成订单号
                 val dateFormat = SimpleDateFormat("yyyyMMdd", Locale.getDefault())
@@ -130,7 +137,7 @@ class OrderViewModel(
                     createTime = System.currentTimeMillis().toString()
                 )
 
-                val orderId = orderRepository.insert(order)
+                orderId = orderRepository.insert(order)
 
                 // 如果是储值支付，扣减客户余额
                 if (payType == "PREPAID") {
@@ -158,8 +165,10 @@ class OrderViewModel(
                 // Handle error
             }
         }
+        
+        return orderId
     }
-    
+
     fun updateOrderStatus(orderId: Long, newStatus: String) {
         viewModelScope.launch {
             try {
@@ -220,6 +229,13 @@ class OrderViewModel(
                 val order = orderRepository.getOrderById(orderId)
                 order?.let {
                     orderRepository.update(it.copy(status = newStatus))
+                    
+                    // 如果订单完成（已取），删除照片
+                    if (newStatus == "FINISHED" && it.photoPath != null) {
+                        cameraHelper.deleteOrderPhotos(orderId)
+                        orderRepository.updatePhotoPath(orderId, null)
+                    }
+                    
                     // 更新当前订单状态
                     if (_currentOrder.value?.id == orderId) {
                         _currentOrder.value = _currentOrder.value?.copy(status = newStatus)
@@ -246,9 +262,11 @@ class OrderViewModel(
                             customerRepository.update(it.copy(balance = newBalance))
                         }
                     }
-                    
+
                     // 先删除衣物
                     clothesRepository.deleteByOrderId(order.orderNo)
+                    // 删除照片
+                    cameraHelper.deleteOrderPhotos(orderId)
                     // 再删除订单
                     orderRepository.delete(order)
                     onSuccess()
@@ -257,6 +275,19 @@ class OrderViewModel(
                 }
             } catch (e: Exception) {
                 onError("删除失败：${e.message}")
+            }
+        }
+    }
+
+    /**
+     * 保存照片路径到数据库
+     */
+    fun savePhotoPath(orderId: Long, photoPath: String) {
+        viewModelScope.launch {
+            try {
+                orderRepository.updatePhotoPath(orderId, photoPath)
+            } catch (e: Exception) {
+                // Handle error
             }
         }
     }

@@ -19,6 +19,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import java.io.File
 import com.chaser.drycleaningsystem.ui.components.navEnterTransition
 import com.chaser.drycleaningsystem.ui.components.navExitTransition
 import com.chaser.drycleaningsystem.ui.components.navPopEnterTransition
@@ -208,7 +209,8 @@ fun AppNavHost() {
                         return OrderViewModel(
                             orderRepository = DataInjection.getOrderRepository(context),
                             customerRepository = DataInjection.getCustomerRepository(context),
-                            clothesRepository = DataInjection.getClothesRepository(context)
+                            clothesRepository = DataInjection.getClothesRepository(context),
+                            context = context
                         ) as T
                     }
                 }
@@ -242,7 +244,8 @@ fun AppNavHost() {
                         return OrderViewModel(
                             orderRepository = DataInjection.getOrderRepository(context),
                             customerRepository = DataInjection.getCustomerRepository(context),
-                            clothesRepository = DataInjection.getClothesRepository(context)
+                            clothesRepository = DataInjection.getClothesRepository(context),
+                            context = context
                         ) as T
                     }
                 }
@@ -283,7 +286,8 @@ fun AppNavHost() {
                         return OrderViewModel(
                             orderRepository = DataInjection.getOrderRepository(context),
                             customerRepository = DataInjection.getCustomerRepository(context),
-                            clothesRepository = DataInjection.getClothesRepository(context)
+                            clothesRepository = DataInjection.getClothesRepository(context),
+                            context = context
                         ) as T
                     }
                 }
@@ -291,8 +295,44 @@ fun AppNavHost() {
             NewOrderScreen(
                 viewModel = viewModel,
                 onNavigateBack = { navController.popBackStack() },
-                onCreateOrder = { customerId, payType, urgent, clothesList ->
-                    viewModel.createOrder(customerId, payType, urgent, clothesList)
+                onCreateOrder = { customerId, payType, urgent, clothesList, photoPath ->
+                    val orderId = viewModel.createOrder(customerId, payType, urgent, clothesList)
+                    
+                    // 添加调试日志
+                    Log.d("DRY CLEAN SYSTEM LOG", "========== 创建订单后调试信息 ==========")
+                    Log.d("DRY CLEAN SYSTEM LOG", "订单 ID: $orderId")
+                    Log.d("DRY CLEAN SYSTEM LOG", "照片路径：${photoPath ?: "null"}")
+                    
+                    // 保存照片路径到数据库，并移动照片目录
+                    if (orderId > 0 && photoPath != null) {
+                        // 从照片路径中提取临时订单 ID
+                        val tempOrderId = photoPath.substringAfter("order_").substringBefore("/")
+                        Log.d("DRY CLEAN SYSTEM LOG", "临时订单 ID: $tempOrderId")
+                        
+                        // 移动照片目录从临时 ID 到实际订单 ID
+                        val tempDir = File(context.filesDir, "photos/order_$tempOrderId")
+                        val actualDir = File(context.filesDir, "photos/order_$orderId")
+                        
+                        Log.d("DRY CLEAN SYSTEM LOG", "临时目录：${tempDir.absolutePath}")
+                        Log.d("DRY CLEAN SYSTEM LOG", "实际目录：${actualDir.absolutePath}")
+                        Log.d("DRY CLEAN SYSTEM LOG", "临时目录存在：${tempDir.exists()}")
+                        
+                        if (tempDir.exists() && tempDir != actualDir) {
+                            tempDir.copyRecursively(actualDir, overwrite = true)
+                            tempDir.deleteRecursively()
+                            Log.d("DRY CLEAN SYSTEM LOG", "照片目录已移动")
+                        }
+                        
+                        // 更新数据库，保存新的照片路径
+                        val newPhotoPath = photoPath.replace("order_$tempOrderId", "order_$orderId")
+                        Log.d("DRY CLEAN SYSTEM LOG", "新照片路径：$newPhotoPath")
+                        viewModel.savePhotoPath(orderId, newPhotoPath)
+                        Log.d("DRY CLEAN SYSTEM LOG", "照片路径已保存到数据库")
+                    } else {
+                        Log.d("DRY CLEAN SYSTEM LOG", "跳过照片保存：orderId=$orderId, photoPath=${photoPath ?: "null"}")
+                    }
+                    Log.d("DRY CLEAN SYSTEM LOG", "==========================================")
+                    
                     navController.popBackStack()
                 }
             )

@@ -54,6 +54,30 @@ class OrderRepository(private val orderDao: OrderDao) {
         orderDao.deleteById(orderId)
     }
 
+    /**
+     * 更新订单照片路径
+     */
+    suspend fun updatePhotoPath(orderId: Long, photoPath: String?) {
+        orderDao.updatePhotoPath(orderId, photoPath)
+    }
+
+    /**
+     * 删除订单（带照片清理）
+     */
+    suspend fun deleteOrderWithPhotos(orderId: Long, context: android.content.Context) {
+        // 先获取订单信息
+        val order = getOrderById(orderId)
+        
+        // 删除照片
+        if (order?.photoPath != null) {
+            val cameraHelper = com.chaser.drycleaningsystem.utils.CameraHelper(context)
+            cameraHelper.deleteOrderPhotos(orderId)
+        }
+        
+        // 删除订单记录
+        deleteById(orderId)
+    }
+
     // 统计相关方法
     suspend fun getOrdersByDate(timestamp: Long): List<Order> {
         return orderDao.getOrdersByDate(timestamp)

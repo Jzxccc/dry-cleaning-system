@@ -1,12 +1,17 @@
 package com.chaser.drycleaningsystem.ui.order
 
+import android.content.Context
+import android.util.Log
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Refresh
@@ -16,10 +21,14 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import coil.compose.rememberAsyncImagePainter
 import com.chaser.drycleaningsystem.data.entity.Clothes
 import com.chaser.drycleaningsystem.data.entity.Order
+import com.chaser.drycleaningsystem.utils.CameraHelper
+import java.io.File
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -39,10 +48,32 @@ fun OrderDetailScreen(
     val orderDetail = remember { viewModel.getOrderDetail(orderId) }
     val order = orderDetail?.order
     val clothesList = orderDetail?.clothesList ?: emptyList()
-    
+
     // 观察当前订单状态变化
     val currentOrder by viewModel.currentOrder.collectAsState(initial = order)
     val displayOrder = currentOrder ?: order ?: return
+    
+    // 添加调试日志
+    LaunchedEffect(displayOrder.id) {
+        Log.d("DRY CLEAN SYSTEM LOG", "========== 订单详情调试信息 ==========")
+        Log.d("DRY CLEAN SYSTEM LOG", "订单 ID: ${displayOrder.id}")
+        Log.d("DRY CLEAN SYSTEM LOG", "订单号：${displayOrder.orderNo}")
+        Log.d("DRY CLEAN SYSTEM LOG", "照片路径：${displayOrder.photoPath ?: "null"}")
+        
+        // 检查照片文件是否存在
+        if (!displayOrder.photoPath.isNullOrBlank()) {
+            val photoFile = File(displayOrder.photoPath)
+            Log.d("DRY CLEAN SYSTEM LOG", "照片文件存在：${photoFile.exists()}")
+            Log.d("DRY CLEAN SYSTEM LOG", "照片文件路径：${photoFile.absolutePath}")
+            
+            // 检查缩略图
+            val thumbnailPath = displayOrder.photoPath.replace(".jpg", "_thumb.jpg")
+            val thumbnailFile = File(thumbnailPath)
+            Log.d("DRY CLEAN SYSTEM LOG", "缩略图文件存在：${thumbnailFile.exists()}")
+            Log.d("DRY CLEAN SYSTEM LOG", "缩略图文件路径：${thumbnailFile.absolutePath}")
+        }
+        Log.d("DRY CLEAN SYSTEM LOG", "==========================================")
+    }
     
     var showStatusDialog by remember { mutableStateOf(false) }
     var showDeleteDialog by remember { mutableStateOf(false) }
@@ -89,6 +120,66 @@ fun OrderDetailScreen(
                     customerName = customerName,
                     customerPhone = customerPhone
                 )
+            }
+
+            // 照片显示区域
+            item {
+                // 检查订单是否有照片路径
+                if (!displayOrder.photoPath.isNullOrBlank()) {
+                    val context = LocalContext.current
+                    val cameraHelper = remember { CameraHelper(context) }
+                    // 从数据库中的照片路径获取缩略图列表
+                    val photoPaths = remember(displayOrder.photoPath) {
+                        // 尝试获取同目录下的所有缩略图
+                        val photoDir = displayOrder.photoPath.substringBeforeLast("/")
+                        cameraHelper.getOrderThumbnails(displayOrder.id)
+                    }
+                    
+                    Text(
+                        text = "衣物照片",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(vertical = 8.dp)
+                    )
+                    
+                    if (photoPaths.isNotEmpty()) {
+                        LazyRow(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            contentPadding = PaddingValues(vertical = 8.dp)
+                        ) {
+                            items(photoPaths.size) { index ->
+                                val photoPath = photoPaths[index]
+
+                                Box(
+                                    modifier = Modifier.size(100.dp)
+                                ) {
+                                    Surface(
+                                        modifier = Modifier.fillMaxSize(),
+                                        color = MaterialTheme.colorScheme.surfaceVariant,
+                                        shape = MaterialTheme.shapes.small,
+                                        shadowElevation = 2.dp
+                                    ) {
+                                        Image(
+                                            painter = rememberAsyncImagePainter(
+                                                model = "file://$photoPath"
+                                            ),
+                                            contentDescription = "衣物照片",
+                                            modifier = Modifier.fillMaxSize(),
+                                            contentScale = androidx.compose.ui.layout.ContentScale.Crop
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    } else {
+                        // 数据库有路径但文件不存在，显示提示
+                        Text(
+                            text = "照片文件不存在",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.error
+                        )
+                    }
+                }
             }
 
             item {

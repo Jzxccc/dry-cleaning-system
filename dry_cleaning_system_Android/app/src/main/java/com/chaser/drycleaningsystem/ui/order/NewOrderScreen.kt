@@ -1,12 +1,16 @@
 package com.chaser.drycleaningsystem.ui.order
 
 import android.content.Context
+import android.graphics.BitmapFactory
+import android.util.Log
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -16,9 +20,12 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import coil.compose.rememberAsyncImagePainter
 import com.chaser.drycleaningsystem.data.DataInjection
 import com.chaser.drycleaningsystem.data.entity.Customer
+import com.chaser.drycleaningsystem.ui.camera.CameraDialog
 import com.chaser.drycleaningsystem.ui.customer.CustomerViewModel
+import java.io.File
 
 /**
  * 新建订单页面
@@ -28,7 +35,7 @@ import com.chaser.drycleaningsystem.ui.customer.CustomerViewModel
 fun NewOrderScreen(
     viewModel: OrderViewModel,
     onNavigateBack: () -> Unit,
-    onCreateOrder: (customerId: Long, payType: String, urgent: Boolean, clothesList: List<ClothesItem>) -> Unit
+    onCreateOrder: (customerId: Long, payType: String, urgent: Boolean, clothesList: List<ClothesItem>, photoPath: String?) -> Unit
 ) {
     val context = LocalContext.current
     val customerViewModel: CustomerViewModel = viewModel(
@@ -50,6 +57,9 @@ fun NewOrderScreen(
     var clothesList by remember { mutableStateOf<List<ClothesItem>>(emptyList()) }
     var showCustomerSelector by remember { mutableStateOf(false) }
     var showAddClothesDialog by remember { mutableStateOf(false) }
+    var showCameraDialog by remember { mutableStateOf(false) }
+    var photoPaths by remember { mutableStateOf<List<String>>(emptyList()) }
+    var tempOrderId by remember { mutableStateOf<Long?>(null) }
     
     // 当选择客户后，如果客户有余额，自动设置为储值支付
     LaunchedEffect(selectedCustomer) {
@@ -181,9 +191,9 @@ fun NewOrderScreen(
                                     }
                                 }
                             }
-                            
+
                             Divider(modifier = Modifier.padding(vertical = 8.dp))
-                            
+
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.SpaceBetween
@@ -197,6 +207,84 @@ fun NewOrderScreen(
                                     fontWeight = FontWeight.Bold,
                                     color = MaterialTheme.colorScheme.primary
                                 )
+                            }
+                        }
+
+                        // 拍照按钮
+                        Spacer(modifier = Modifier.height(16.dp))
+                        
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "衣物照片",
+                                fontWeight = FontWeight.Bold,
+                                style = MaterialTheme.typography.titleMedium
+                            )
+                            
+                            Button(
+                                onClick = {
+                                    // 生成临时订单 ID 用于存储照片
+                                    if (tempOrderId == null) {
+                                        tempOrderId = System.currentTimeMillis()
+                                    }
+                                    showCameraDialog = true
+                                },
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = MaterialTheme.colorScheme.primary
+                                )
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.CameraAlt,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text("拍照")
+                            }
+                        }
+
+                        // 照片缩略图显示
+                        if (photoPaths.isNotEmpty()) {
+                            Spacer(modifier = Modifier.height(8.dp))
+                            androidx.compose.foundation.lazy.LazyRow(
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                contentPadding = PaddingValues(vertical = 8.dp)
+                            ) {
+                                items(photoPaths.size) { index ->
+                                    val photoPath = photoPaths[index]
+                                    val thumbnailPath = photoPath.replace(".jpg", "_thumb.jpg")
+                                    
+                                    androidx.compose.foundation.layout.Box(
+                                        modifier = androidx.compose.ui.Modifier
+                                            .size(80.dp)
+                                    ) {
+                                        Surface(
+                                            modifier = androidx.compose.ui.Modifier.fillMaxSize(),
+                                            color = MaterialTheme.colorScheme.surfaceVariant,
+                                            shape = MaterialTheme.shapes.small,
+                                            shadowElevation = 2.dp
+                                        ) {
+                                            // 尝试加载缩略图，如果不存在则加载原图
+                                            val imagePath = if (File(thumbnailPath).exists()) {
+                                                thumbnailPath
+                                            } else {
+                                                photoPath
+                                            }
+                                            
+                                            Image(
+                                                painter = rememberAsyncImagePainter(
+                                                    model = "file://$imagePath"
+                                                ),
+                                                contentDescription = "照片缩略图",
+                                                modifier = androidx.compose.ui.Modifier.fillMaxSize(),
+                                                contentScale = androidx.compose.ui.layout.ContentScale.Crop
+                                            )
+                                        }
+                                    }
+                                }
                             }
                         }
                     }
@@ -314,11 +402,23 @@ fun NewOrderScreen(
                     onClick = {
                         selectedCustomer?.let { customer ->
                             if (clothesList.isNotEmpty()) {
+                                // 获取第一张照片的路径（如果有）
+                                val photoPath = photoPaths.firstOrNull()
+                                
+                                // 添加调试日志
+                                Log.d("DRY CLEAN SYSTEM LOG", "========== 提交订单调试信息 ==========")
+                                Log.d("DRY CLEAN SYSTEM LOG", "客户 ID: ${customer.id}")
+                                Log.d("DRY CLEAN SYSTEM LOG", "衣物数量：${clothesList.size}")
+                                Log.d("DRY CLEAN SYSTEM LOG", "照片路径数量：${photoPaths.size}")
+                                Log.d("DRY CLEAN SYSTEM LOG", "第一张照片路径：${photoPath ?: "null"}")
+                                Log.d("DRY CLEAN SYSTEM LOG", "==========================================")
+                                
                                 onCreateOrder(
                                     customer.id,
                                     payType,
                                     isUrgent,
-                                    clothesList
+                                    clothesList,
+                                    photoPath
                                 )
                             }
                         }
@@ -368,6 +468,22 @@ fun NewOrderScreen(
                 showAddClothesDialog = false
             },
             onDismiss = { showAddClothesDialog = false }
+        )
+    }
+
+    // 拍照对话框
+    if (showCameraDialog && tempOrderId != null) {
+        CameraDialog(
+            orderId = tempOrderId!!,
+            onPhotoTaken = { photoPath ->
+                photoPaths = photoPaths + photoPath
+            },
+            onDismiss = { 
+                showCameraDialog = false
+                if (photoPaths.isEmpty()) {
+                    tempOrderId = null
+                }
+            }
         )
     }
 }

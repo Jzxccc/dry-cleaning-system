@@ -12,29 +12,29 @@
 
 ## 3. 相机功能实现
 
-- [ ] 3.1 创建 CameraPreview Composable（相机预览界面）
-- [ ] 3.2 创建 CameraHelper 工具类（拍照、缩略图生成）
-- [ ] 3.3 实现照片存储逻辑（context.filesDir/photos/order_{orderId}/）
-- [ ] 3.4 实现缩略图生成（200x200，JPEG 80% 质量）
+- [x] 3.1 创建 CameraPreview Composable（相机预览界面）
+- [x] 3.2 创建 CameraHelper 工具类（拍照、缩略图生成）
+- [x] 3.3 实现照片存储逻辑（context.filesDir/photos/order_{orderId}/）
+- [x] 3.4 实现缩略图生成（200x200，JPEG 80% 质量）
 
 ## 4. UI 实现
 
-- [ ] 4.1 在 NewOrderScreen 添加拍照按钮（衣物列表下方）
-- [ ] 4.2 实现拍照对话框（全屏相机预览）
-- [ ] 4.3 添加照片缩略图显示区域（横向滚动列表）
+- [x] 4.1 在 NewOrderScreen 添加拍照按钮（衣物列表下方）
+- [x] 4.2 实现拍照对话框（全屏相机预览）
+- [x] 4.3 添加照片缩略图显示区域（横向滚动列表）
 - [ ] 4.4 实现全屏查看照片对话框
 
 ## 5. 业务逻辑
 
-- [ ] 5.1 在 OrderViewModel 添加拍照处理方法
-- [ ] 5.2 在 OrderRepository 添加照片路径保存方法
-- [ ] 5.3 在 OrderViewModel 实现订单完成时删除照片逻辑
-- [ ] 5.4 在 OrderRepository 实现订单删除时同步删除照片逻辑
+- [x] 5.1 在 OrderViewModel 添加拍照处理方法
+- [x] 5.2 在 OrderRepository 添加照片路径保存方法
+- [x] 5.3 在 OrderViewModel 实现订单完成时删除照片逻辑
+- [x] 5.4 在 OrderRepository 实现订单删除时同步删除照片逻辑
 
 ## 6. 权限处理
 
-- [ ] 6.1 使用 ActivityResultContracts.RequestPermission 请求相机权限
-- [ ] 6.2 处理权限被拒绝的情况（显示提示，允许跳过）
+- [x] 6.1 使用 ActivityResultContracts.RequestPermission 请求相机权限
+- [x] 6.2 处理权限被拒绝的情况（显示提示，允许跳过）
 
 ## 7. 测试和验证
 

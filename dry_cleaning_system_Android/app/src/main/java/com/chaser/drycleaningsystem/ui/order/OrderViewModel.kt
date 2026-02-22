@@ -394,13 +394,14 @@ data class ClothesItem(
 object ClothesTypePricing {
     val clothesTypes = listOf(
         ClothesType("毛衫", 20.0),
+        ClothesType("鞋", 15.0),
+        ClothesType("裤子", 20.0),
+        ClothesType("羽绒服", 20.0),
         ClothesType("羊绒大衣 (小)", 20.0),
         ClothesType("羊绒大衣 (中)", 25.0),
         ClothesType("羊绒大衣 (大)", 30.0),
         ClothesType("皮毛一体", 50.0),
-        ClothesType("貂", 300.0),
-        ClothesType("鞋", 15.0),
-        ClothesType("裤子", 20.0)
+        ClothesType("貂", 300.0)
     )
 }
 

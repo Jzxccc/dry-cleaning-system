@@ -39,4 +39,13 @@ public interface CustomerService {
      * @return 匹配的客户列表
      */
     List<Customer> fuzzySearchWithPinyin(String name, String phone, String note);
+
+    /**
+     * 创建客户并可选初始充值
+     * @param customer 客户基本信息
+     * @param rechargeAmount 充值金额（可选，必须为 100 的整数倍）
+     * @return 创建后的客户
+     * @throws IllegalArgumentException 当充值金额不是 100 的整数倍时抛出
+     */
+    Customer createCustomerWithRecharge(Customer customer, Double rechargeAmount);
 }

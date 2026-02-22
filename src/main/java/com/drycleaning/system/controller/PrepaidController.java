@@ -21,7 +21,23 @@ public class PrepaidController {
     @Autowired
     private RechargeRecordService rechargeRecordService;
 
-    // 充值功能（含 20% 赠送）
+    /**
+     * 计算赠送金额比例
+     * - 充值 >= 200 送 20%
+     * - 充值 >= 100 送 10%
+     * - 充值 < 100 不赠送
+     */
+    private Double calculateGiftAmount(Double amount) {
+        if (amount >= 200) {
+            return amount * 0.2;
+        } else if (amount >= 100) {
+            return amount * 0.1;
+        } else {
+            return 0.0;
+        }
+    }
+
+    // 充值功能（阶梯赠送：100 送 10%，200 送 20%）
     @PostMapping("/recharge")
     public ResponseEntity<String> recharge(@RequestParam Long customerId, @RequestParam Double amount) {
         Optional<Customer> customerOpt = customerService.getCustomerById(customerId);
@@ -31,8 +47,8 @@ public class PrepaidController {
 
         Customer customer = customerOpt.get();
 
-        // 计算赠送金额
-        Double giftAmount = amount * 0.2;
+        // 计算赠送金额（阶梯比例）
+        Double giftAmount = calculateGiftAmount(amount);
         Double totalAdded = amount + giftAmount;
 
         // 更新客户余额

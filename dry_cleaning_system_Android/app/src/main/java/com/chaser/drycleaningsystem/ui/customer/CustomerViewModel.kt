@@ -74,7 +74,7 @@ class CustomerViewModel(
             try {
                 Log.d("DRY CLEAN SYSTEM LOG", "CustomerViewModel.addCustomer 被调用")
                 Log.d("DRY CLEAN SYSTEM LOG", "客户信息：name=$name, phone=${phone ?: "null"}, balance=${balance}")
-                
+
                 val customer = Customer(
                     name = name,
                     phone = phone,
@@ -86,6 +86,84 @@ class CustomerViewModel(
                 Log.d("DRY CLEAN SYSTEM LOG", "客户保存成功，customerId=$customerId, balance=${customer.balance}")
             } catch (e: Exception) {
                 Log.e("DRY CLEAN SYSTEM LOG", "客户保存失败：${e.message}", e)
+            }
+        }
+    }
+
+    /**
+     * 创建客户并充值
+     * @param name 客户姓名
+     * @param phone 手机号
+     * @param wechat 微信
+     * @param note 备注
+     * @param rechargeAmount 充值金额（必须是 100 的整数倍）
+     */
+    fun addCustomerWithRecharge(
+        name: String,
+        phone: String?,
+        wechat: String?,
+        note: String?,
+        rechargeAmount: Double,
+        onSuccess: () -> Unit,
+        onError: (String) -> Unit
+    ) {
+        viewModelScope.launch {
+            try {
+                Log.d("DRY CLEAN SYSTEM LOG", "CustomerViewModel.addCustomerWithRecharge 被调用")
+                Log.d("DRY CLEAN SYSTEM LOG", "客户信息：name=$name, rechargeAmount=$rechargeAmount")
+
+                // 验证充值金额
+                if (rechargeAmount <= 0 || rechargeAmount.toInt() % 100 != 0) {
+                    onError("充值金额必须是 100 的整数倍")
+                    return@launch
+                }
+
+                // 创建客户（初始余额为 0）
+                val customer = Customer(
+                    name = name,
+                    phone = phone,
+                    wechat = wechat,
+                    balance = 0.0,
+                    note = note
+                )
+                val customerId = repository.insert(customer)
+                Log.d("DRY CLEAN SYSTEM LOG", "客户保存成功，customerId=$customerId")
+
+                // 计算赠送金额（阶梯比例：100 送 10%，200 送 20%）
+                val giftAmount = if (rechargeAmount >= 200) {
+                    rechargeAmount * 0.2
+                } else if (rechargeAmount >= 100) {
+                    rechargeAmount * 0.1
+                } else {
+                    0.0
+                }
+                val totalAmount = rechargeAmount + giftAmount
+
+                // 直接创建带余额的新客户对象并更新
+                val customerWithBalance = Customer(
+                    id = customerId,
+                    name = name,
+                    phone = phone,
+                    wechat = wechat,
+                    balance = totalAmount,
+                    note = note
+                )
+                repository.update(customerWithBalance)
+                Log.d("DRY CLEAN SYSTEM LOG", "客户余额更新成功，customerId=$customerId, balance=$totalAmount")
+
+                // 创建充值记录
+                val rechargeRecord = com.chaser.drycleaningsystem.data.entity.RechargeRecord(
+                    customerId = customerId,
+                    rechargeAmount = rechargeAmount,
+                    giftAmount = giftAmount
+                )
+                rechargeRecordRepository.insert(rechargeRecord)
+                Log.d("DRY CLEAN SYSTEM LOG", "充值记录保存成功")
+
+                onSuccess()
+            } catch (e: Exception) {
+                Log.e("DRY CLEAN SYSTEM LOG", "创建客户并充值失败：${e.message}", e)
+                onError("创建失败：${e.message}")
             }
         }
     }

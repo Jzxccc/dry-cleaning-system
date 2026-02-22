@@ -136,6 +136,21 @@ fun AppNavHost() {
                     onConfirm = { name, phone, wechat, balance, note ->
                         viewModel.addCustomer(name, phone, wechat, balance, note)
                         showAddCustomerDialog = false
+                    },
+                    onConfirmWithRecharge = { name, phone, wechat, note, rechargeAmount ->
+                        viewModel.addCustomerWithRecharge(
+                            name = name,
+                            phone = phone,
+                            wechat = wechat,
+                            note = note,
+                            rechargeAmount = rechargeAmount,
+                            onSuccess = {
+                                showAddCustomerDialog = false
+                            },
+                            onError = { error ->
+                                // 错误已在对话框内处理
+                            }
+                        )
                     }
                 )
             }
@@ -147,6 +162,9 @@ fun AppNavHost() {
                     onConfirm = { name, phone, wechat, balance, note ->
                         viewModel.updateCustomer(customerToEdit!!.id, name, phone, wechat, balance, note)
                         customerToEdit = null
+                    },
+                    onConfirmWithRecharge = { _, _, _, _, _ ->
+                        // 编辑客户时不支持充值
                     },
                     customer = customerToEdit
                 )

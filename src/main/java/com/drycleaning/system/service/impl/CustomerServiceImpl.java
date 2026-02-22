@@ -1,10 +1,13 @@
 package com.drycleaning.system.service.impl;
 
 import com.drycleaning.system.mapper.CustomerMapper;
+import com.drycleaning.system.mapper.RechargeRecordMapper;
 import com.drycleaning.system.model.Customer;
+import com.drycleaning.system.model.RechargeRecord;
 import com.drycleaning.system.service.CustomerService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Optional;
@@ -14,6 +17,9 @@ public class CustomerServiceImpl implements CustomerService {
 
     @Autowired
     private CustomerMapper customerMapper;
+
+    @Autowired
+    private RechargeRecordMapper rechargeRecordMapper;
 
     @Override
     public List<Customer> getAllCustomers() {
@@ -146,5 +152,48 @@ public class CustomerServiceImpl implements CustomerService {
                 return true;
             })
             .collect(java.util.stream.Collectors.toList());
+    }
+
+    @Override
+    @Transactional
+    public Customer createCustomerWithRecharge(Customer customer, Double rechargeAmount) {
+        // 验证充值金额：如果为 null 或 0，则只创建客户不充值
+        if (rechargeAmount == null || rechargeAmount <= 0) {
+            return createCustomer(customer);
+        }
+
+        // 验证充值金额必须是 100 的整数倍
+        if (rechargeAmount % 100 != 0) {
+            throw new IllegalArgumentException("充值金额必须是 100 的整数倍");
+        }
+
+        // 创建客户（初始余额为 0）
+        customer.setBalance(0.0);
+        customer.setCreateTime(java.time.LocalDateTime.now().toString());
+        customerMapper.insert(customer);
+
+        // 计算赠送金额（阶梯比例：100 送 10%，200 送 20%）
+        Double giftAmount;
+        if (rechargeAmount >= 200) {
+            giftAmount = rechargeAmount * 0.2;
+        } else if (rechargeAmount >= 100) {
+            giftAmount = rechargeAmount * 0.1;
+        } else {
+            giftAmount = 0.0;
+        }
+        Double totalAmount = rechargeAmount + giftAmount;
+
+        // 更新客户余额
+        customer.setBalance(totalAmount);
+        customerMapper.updateById(customer);
+
+        // 创建充值记录
+        RechargeRecord record = new RechargeRecord();
+        record.setCustomerId(customer.getId());
+        record.setRechargeAmount(rechargeAmount);
+        record.setGiftAmount(giftAmount);
+        rechargeRecordMapper.insert(record);
+
+        return customer;
     }
 }

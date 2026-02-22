@@ -19,7 +19,7 @@ import com.chaser.drycleaningsystem.data.entity.*
         Clothes::class,
         RechargeRecord::class
     ],
-    version = 3,
+    version = 4,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -40,7 +40,7 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "dry_cleaning_database"
                 )
-                .addMigrations(MIGRATION_2_3)
+                .addMigrations(MIGRATION_2_3, MIGRATION_3_4)
                 .fallbackToDestructiveMigration()
                 .build()
                 INSTANCE = instance
@@ -52,6 +52,13 @@ abstract class AppDatabase : RoomDatabase() {
         val MIGRATION_2_3 = object : Migration(2, 3) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("ALTER TABLE orders ADD COLUMN photo_path TEXT")
+            }
+        }
+
+        // 版本 3 -> 4: 确保 customer 表 balance 字段正确映射
+        val MIGRATION_3_4 = object : Migration(3, 4) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                // balance 字段已存在，无需修改，此迁移用于触发版本升级
             }
         }
     }

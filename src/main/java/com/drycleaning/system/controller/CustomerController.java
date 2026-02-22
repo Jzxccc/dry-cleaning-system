@@ -30,14 +30,29 @@ public class CustomerController {
     }
 
     @PostMapping
-    public ResponseEntity<?> createCustomer(@RequestBody Customer customer) {
+    public ResponseEntity<?> createCustomer(
+            @RequestBody Customer customer,
+            @RequestParam(required = false) Double rechargeAmount) {
         // 验证必填字段
         if (customer.getName() == null || customer.getName().trim().isEmpty()) {
             return ResponseEntity.badRequest().body("客户姓名不能为空");
         }
-        
-        Customer createdCustomer = customerService.createCustomer(customer);
-        return ResponseEntity.ok(createdCustomer);
+
+        try {
+            Customer createdCustomer;
+            if (rechargeAmount != null && rechargeAmount > 0) {
+                // 创建客户并充值
+                createdCustomer = customerService.createCustomerWithRecharge(customer, rechargeAmount);
+            } else {
+                // 仅创建客户
+                createdCustomer = customerService.createCustomer(customer);
+            }
+            return ResponseEntity.ok(createdCustomer);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().body("创建客户失败：" + e.getMessage());
+        }
     }
 
     @PutMapping("/{id}")

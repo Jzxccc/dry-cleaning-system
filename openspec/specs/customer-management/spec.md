@@ -5,11 +5,19 @@
 ## Requirements
 
 ### Requirement: Customer Creation
-The system SHALL allow staff to create new customers with basic information.
+The system SHALL allow staff to create new customers with basic information and optionally an initial recharge amount.
 
-#### Scenario: Successful Customer Creation
-- **WHEN** staff enters customer details (name, phone) and submits
-- **THEN** system creates a new customer record with provided information
+#### Scenario: Successful Customer Creation without Recharge
+- **WHEN** staff enters customer details (name, phone) without recharge amount and submits
+- **THEN** system creates a new customer record with provided information and balance 0.00
+
+#### Scenario: Successful Customer Creation with Recharge
+- **WHEN** staff enters customer details (name, phone) and recharge amount (100 的整数倍) and submits
+- **THEN** system creates customer, calculates recharge with bonus (100 送 10%, 200 送 20%), adds total to balance, and creates recharge record
+
+#### Scenario: Customer Creation with Invalid Recharge Amount
+- **WHEN** staff enters recharge amount that is not a multiple of 100
+- **THEN** system displays error message "充值金额必须是 100 的整数倍"
 
 ### Requirement: Customer Information Storage
 The system SHALL store customer information including name, phone number, WeChat ID, and balance.

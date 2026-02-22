@@ -2,7 +2,7 @@
 
 照片清理功能规范 - 定义订单完成后自动删除衣物照片的功能要求。
 
-## ADDED Requirements
+## Requirements
 
 ### Requirement: Auto Delete Photos on Order Complete
 The system SHALL automatically delete clothes photos when an order is completed.

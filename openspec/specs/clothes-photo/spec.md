@@ -2,7 +2,7 @@
 
 衣物拍照功能规范 - 定义在创建订单时为衣物拍照的功能要求。
 
-## ADDED Requirements
+## Requirements
 
 ### Requirement: Take Photo for Clothes
 The system SHALL allow staff to take photos for clothes when creating an order.
